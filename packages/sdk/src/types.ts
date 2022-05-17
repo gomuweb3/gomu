@@ -1,72 +1,89 @@
-import { ContractReceipt, ContractTransaction } from "@ethersproject/contracts";
-import { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
-import { Order as _OpenseaOrder } from "opensea-js/lib/types";
+import { SignedOrder, SignedNftOrderV4, SwappableAsset, SwappableAssetV4, SignedNftOrderV4Serialized } from '@traderxyz/nft-swap-sdk';
+import { OpenSeaAsset, Order as OpenseaOrder } from 'opensea-js/lib/types';
 
-export interface Asset {
-  /** The asset's contract address */
+export type { SwappableAsset, SwappableAssetV4, OpenSeaAsset, OpenseaOrder };
+
+export type SupportedTokenType = 'ERC20' | 'ERC721' | 'ERC1155';
+
+export type SupportedPlatformType = 'opensea' | 'traderxyz';
+
+export type OpenseaSupportedNetwork = 'main' | 'rinkeby';
+
+export type OrderSideType = 'buy' | 'sell';
+
+export type TraderxyzNftType = 'ERC721' | 'ERC1155';
+
+export interface TradableAsset {
   tokenAddress: string;
-
-  /** The asset's token ID, optional if ERC-20 */
-  tokenId?: string;
-
-  type: "ERC20" | "ERC721" | "ERC1155";
-
-  amount: bigint;
+  tokenId: string;
+  type: SwappableAssetV4['type'];
 }
 
-export interface MakeOrderOptions {
-  taker?: string;
+export interface WrappedOrder {
+  id?: number;
+  created_at?: string;
+  isV4: boolean;
+  makerAddress: string;
+  takerAddress: string;
+  signedOrder: SignedOrder | SignedNftOrderV4;
+  isFilled?: boolean;
+  isRejected?: boolean;
 }
 
-interface Opensea {
-  marketplaceName: "opensea";
+export interface TraderxyzOrder { // REQUIRES SYNC WITH SearchOrdersResponsePayload
+  erc20Token: string;
+  erc20TokenAmount: string;
+  nftToken: string;
+  nftTokenId: string;
+  nftTokenAmount: string;
+  nftType: TraderxyzNftType;
+  sellOrBuyNft: 'buy' | 'sell';
+  chainId: string;
+  order: SignedNftOrderV4Serialized;
+  metadata: Record<string, string> | null;
 }
 
-interface TraderXyz {
-  marketplaceName: "traderxyz";
+export type PlatformOrderData = OpenseaOrder | TraderxyzOrder;
+
+export interface PlatformOrder {
+  platform: SupportedPlatformType;
+  order: PlatformOrderData;
 }
 
-export interface OpenseaOrder extends Opensea {
-  marketplaceOrder: _OpenseaOrder;
+export interface ERC20TokenInfo {
+  address: string;
+  decimals: number;
+  name: string;
+  symbol: string;
 }
 
-export interface TraderXyzOrder extends TraderXyz {
-  marketplaceOrder: PostOrderResponsePayload;
+export interface CreateOrderOptions {
+  assets: TradableAsset[];
+  priceInBaseUnits: string;
+  paymentTokenAddress?: string;
+  expirationTime?: number;
+  ERC20TokenInfo?: ERC20TokenInfo;
+  orderSide: OrderSideType;
 }
 
-export type Order = OpenseaOrder | TraderXyzOrder;
+export type CreateOrderOptionsUserFacing = Omit<CreateOrderOptions, 'ERC20Token' | 'assets' | 'orderSide'> & { asset: TradableAsset }
 
-export interface GetOrdersOptions {
-  maker?: string;
-  makerAsset?: Asset;
-  taker?: string;
-  takerAsset?: Asset;
+export interface GetAssetOrdersOptions {
+  asset: TradableAsset;
+  orderSide?: OrderSideType;
 }
 
-export interface GetOrdersResponse {
-  orders: Order[];
+export interface PlatformInterface<Order, TakeOrderRes, CancelOrderRes> {
+  createOrder(options: CreateOrderOptions): Promise<Order | null>;
+  getAssetOrders(options: GetAssetOrdersOptions): Promise<Order[]>;
+  fulfillOrder(order: Order): Promise<TakeOrderRes>;
+  cancelOrder(order: Order): Promise<CancelOrderRes>;
 }
 
-export interface OpenseaTakeOrderResponse extends Opensea {
-  marketplaceResponse: string;
+export type GetAssetOrdersResponse = Partial<Record<SupportedPlatformType, PlatformOrder[]>>;
+
+export interface CustomProvidersConfig {
+  provider: any;
+  signer: any;
+  hdWallet: any;
 }
-
-export interface TraderXyzTakeOrderResponse extends TraderXyz {
-  marketplaceResponse: ContractReceipt;
-}
-
-export type TakeOrderResponse =
-  | OpenseaTakeOrderResponse
-  | TraderXyzTakeOrderResponse;
-
-export interface OpenseaCancelOrderResponse extends Opensea {
-  marketplaceResponse: void;
-}
-
-export interface TraderXyzCancelOrderResponse extends TraderXyz {
-  marketplaceResponse: ContractTransaction;
-}
-
-export type CancelOrderResponse =
-  | OpenseaCancelOrderResponse
-  | TraderXyzCancelOrderResponse;

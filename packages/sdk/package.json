@@ -8,16 +8,9 @@
     "lint": "yarn run -T lint"
   },
   "dependencies": {
-    "@ethersproject/abstract-signer": "^5.6.0",
-    "@ethersproject/bignumber": "^5.6.0",
-    "@ethersproject/contracts": "^5.6.0",
-    "@ethersproject/providers": "^5.6.4",
-    "@ethersproject/wallet": "^5.6.0",
-    "@traderxyz/nft-swap-sdk": "^0.23.0",
-    "@truffle/hdwallet-provider": "^2.0.8",
+    "@traderxyz/nft-swap-sdk": "^0.25.0",
     "bignumber.js": "^9.0.2",
-    "opensea-js": "^3.0.4",
-    "web3": "^1.7.3",
-    "web3-providers-http": "^1.7.3"
+    "ethers": "^5.6.1",
+    "opensea-js": "^3.0.4"
   }
 }

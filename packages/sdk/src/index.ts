@@ -1,145 +1,282 @@
-import { BaseProvider, JsonRpcProvider } from "@ethersproject/providers";
-import { Wallet } from "@ethersproject/wallet";
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
-import HDWalletProvider from "@truffle/hdwallet-provider";
-import { Network, OpenSeaPort } from "opensea-js";
+import { type SwappableAsset, type SwappableAssetV4, SupportedChainIdsV4 } from '@traderxyz/nft-swap-sdk';
+import traderxyzAddresses from '@traderxyz/nft-swap-sdk/src/sdk/v4/addresses.json';
+import { type OpenSeaAsset } from 'opensea-js/lib/types';
+import type {
+  OrderSideType,
+  TradableAsset,
+  TraderxyzOrder,
+  OpenseaOrder,
+  SupportedPlatformType,
+  OpenseaSupportedNetwork,
+  PlatformOrder,
+  CreateOrderOptionsUserFacing,
+  GetAssetOrdersResponse,
+  ERC20TokenInfo,
+  CustomProvidersConfig,
+} from './types';
+import { SwapSdk } from './swap';
+import { OpenseaSdk } from './platforms/opensea';
+import { TraderxyzSdk, TraderxyzConfig } from './platforms/traderxyz';
+import { transformCreateOrderResults, getERC20Asset } from './utils';
+import { WETH_ADDRESSES } from './constants';
 
-import { Opensea } from "./marketplaces/Opensea";
-import { TraderXyz } from "./marketplaces/TraderXyz";
-import {
-  Asset,
-  CancelOrderResponse,
-  GetOrdersOptions,
-  GetOrdersResponse,
-  MakeOrderOptions,
-  Order,
-  TakeOrderResponse,
-} from "./types";
+export { SwapSdk, OpenseaSdk, TradableAsset, SwappableAsset, SwappableAssetV4, OpenSeaAsset, OpenseaOrder, TraderxyzOrder, PlatformOrder, GetAssetOrdersResponse };
+export { SUPPORTED_TOKEN_TYPES } from './constants';
+export type { WrappedOrder, SupportedTokenType, SupportedPlatformType, OrderSideType } from './types';
 
-export { Asset };
-
-export interface GomuOptions {
-  wallet: Wallet;
+interface CommerceSdkConfig {
+  apiKeys?: {
+    opensea?: string,
+  }
   chainId?: number;
-  openseaApiKey?: string;
+  customProviders?: CustomProvidersConfig;
+  makerAddress?: string;
+  traderxyzGasLimit?: string;
+  selectedPlatforms?: SupportedPlatformType[];
 }
 
-interface Marketplaces {
-  opensea?: Opensea;
-  traderxyz?: TraderXyz;
-}
+const traderxyzSupportedChains = Object.keys(SupportedChainIdsV4).reduce((acc, entry) => {
+  const num = Number(entry);
+  if (Number.isInteger(num)) {
+    acc.push(num);
+  }
+  return acc;
+}, [] as number[]);
 
-export default class Gomu {
-  private readonly provider: BaseProvider;
-  private readonly chainId: number;
-  private readonly wallet: Wallet;
-  readonly marketplaces: Marketplaces = {};
+const SUPPORTED_CHAINS_MAPPING: Record<SupportedPlatformType, number[]> = {
+  opensea: [1, 4],
+  traderxyz: traderxyzSupportedChains,
+};
 
-  constructor(
-    provider: BaseProvider,
-    { wallet, chainId = 1, openseaApiKey }: GomuOptions
-  ) {
-    this.provider = provider;
-    this.wallet = wallet;
+const SUPPORTED_PLATFORMS: SupportedPlatformType[] = ['opensea', 'traderxyz'];
+
+const getTraderxyzSdk = (config: TraderxyzConfig) => {
+  let traderxyzSdk;
+  let error: any;
+  try {
+    traderxyzSdk = new TraderxyzSdk(config);
+  } catch (e: any) {
+    // protects only from usage of unsupported chainId, which is properly handled in other methods
+    traderxyzSdk = new TraderxyzSdk({ ...config, chainId: 1 });
+    error = e;
+  }
+  return { traderxyzSdk, error };
+};
+
+export class CommerceSdk {
+  private traderxyzSdk: TraderxyzSdk;
+  private openseaSdk: OpenseaSdk;
+  private openseaNetwork: OpenseaSupportedNetwork;
+  private isOpenseaEnabled: boolean;
+  private sdkMapping: Record<SupportedPlatformType, TraderxyzSdk | OpenseaSdk>;
+  readonly chainId: number;
+  readonly enabledPlatforms: SupportedPlatformType[];
+  readonly supportedChains = SUPPORTED_CHAINS_MAPPING;
+  readonly selectedPlatforms: SupportedPlatformType[];
+
+  constructor(config?: CommerceSdkConfig) {
+    const { apiKeys, chainId = 1, customProviders, makerAddress, traderxyzGasLimit, selectedPlatforms } = config || {};
+
+    if ((typeof window === 'undefined' || !window.ethereum) && !customProviders) {
+      throw new Error('"customProviders" required if "window.ethereum" is unavailable.');
+    }
+
     this.chainId = chainId;
+    this.selectedPlatforms = selectedPlatforms || [];
+    this.enabledPlatforms = SUPPORTED_PLATFORMS.reduce((acc, key) => {
+      if (selectedPlatforms?.length && !selectedPlatforms.includes(key)) {
+        return acc;
+      }
+      if (SUPPORTED_CHAINS_MAPPING[key].includes(chainId)) {
+        if (key === 'opensea' && !apiKeys?.opensea) {
+          console.warn('Opensea is not initialized because apiKey is missing.');
+          return acc;
+        }
+        acc.push(key);
+      }
+      return acc;
+    }, [] as SupportedPlatformType[]);
 
-    const walletAddress = this.wallet.address;
+    if (!this.enabledPlatforms.length) {
+      console.error(this._getNoPlatformsErrorMessage());
+    }
 
-    const web3Provider = new HDWalletProvider({
-      privateKeys: [this.wallet.privateKey],
-      url: (this.wallet.provider as JsonRpcProvider).connection.url,
+    const { traderxyzSdk, error } = getTraderxyzSdk({ chainId, customProviders, makerAddress, gasLimit: traderxyzGasLimit });
+    if (error && (!this.selectedPlatforms.length || !this.selectedPlatforms.includes('traderxyz'))) {
+      console.error(`TraderxyzSdk initialization error with chainId ${chainId}:`, error);
+    }
+
+    this.traderxyzSdk = traderxyzSdk;
+    const useRinkebyTestnet = chainId === 4;
+    this.openseaSdk = new OpenseaSdk({
+      apiKey: apiKeys?.opensea,
+      useRinkebyTestnet,
+      customProvider: customProviders?.hdWallet,
+      makerAddress,
+    });
+    this.isOpenseaEnabled = this.enabledPlatforms.includes('opensea');
+    this.openseaNetwork = useRinkebyTestnet ? 'rinkeby' : 'main';
+    this.sdkMapping = {
+      opensea: this.openseaSdk,
+      traderxyz: this.traderxyzSdk,
+    }
+  }
+
+  private _getNoPlatformsErrorMessage() {
+    return `ChainId ${this.chainId} doesn't have supported platforms with this configuration.
+    Supported chains: ${JSON.stringify(this.supportedChains)}.
+    ${this.selectedPlatforms?.length ? `Selected platforms configuration: ${JSON.stringify(this.selectedPlatforms)}` : ''}`;
+  }
+
+  private async _approveAssetsStatuses(assets: SwappableAssetV4[]) {
+    const supportedChainIds = Object.keys(traderxyzAddresses).map(Number);
+    if (supportedChainIds.includes(this.chainId)) {
+      await this.traderxyzSdk.approveAssetsStatuses({ assets });
+    }
+  }
+
+  private _getSdk(platform: SupportedPlatformType) {
+    const sdk = this.sdkMapping[platform];
+    if (!sdk) {
+      throw new Error(`Platform "${platform}" is not supported. Supported platforms: ${JSON.stringify(SUPPORTED_PLATFORMS)}`);
+    }
+    return sdk;
+  }
+
+  private _doInitialSafetyChecks() {
+    if (!this.enabledPlatforms.length) {
+      throw new Error(this._getNoPlatformsErrorMessage());
+    }
+  }
+
+  private async _getERC20TokenInfo(address?: string): Promise<ERC20TokenInfo | undefined> {
+    if (!this.isOpenseaEnabled || !address) return undefined;
+    const { tokens } = await this.openseaSdk.sdk.api.getPaymentTokens({ address });
+    return tokens[0];
+  }
+
+  public async createSellOrders({
+    asset,
+    priceInBaseUnits,
+    paymentTokenAddress,
+    expirationTime,
+  }: CreateOrderOptionsUserFacing) {
+    this._doInitialSafetyChecks();
+
+    const ERC20TokenInfo = await this._getERC20TokenInfo(paymentTokenAddress);
+
+    if (this.isOpenseaEnabled && paymentTokenAddress && !ERC20TokenInfo) {
+      throw new Error(`Trading for this asset (${paymentTokenAddress}) is not yet supported on this chain with opensea.`);
+    }
+
+    this._approveAssetsStatuses([asset as SwappableAssetV4]);
+
+    const results = await Promise.all(this.enabledPlatforms.map(async (platform) => {
+      const sdk = this._getSdk(platform);
+      const result = await sdk.createOrder({
+        assets: [asset],
+        priceInBaseUnits,
+        paymentTokenAddress,
+        expirationTime,
+        ERC20TokenInfo,
+        orderSide: 'sell',
+      });
+
+      return {
+        platform,
+        result,
+      };
+    }));
+
+    return transformCreateOrderResults(results);
+  }
+
+  public async createBuyOrders({
+    asset,
+    priceInBaseUnits,
+    paymentTokenAddress: paymentTokenAddressFromOptions,
+    expirationTime,
+  }: CreateOrderOptionsUserFacing) {
+    this._doInitialSafetyChecks();
+
+    const paymentTokenAddress = paymentTokenAddressFromOptions
+      || (this.isOpenseaEnabled ? WETH_ADDRESSES[this.openseaNetwork] : ''); // creating buy orders by default uses WETH on opensea side if no token is specified
+
+    if (!paymentTokenAddress) {
+      throw new Error('"paymentTokenAddress" is required for this chainId');
+    }
+
+    const ERC20TokenInfo = await this._getERC20TokenInfo(paymentTokenAddress);
+
+    if (this.isOpenseaEnabled && !ERC20TokenInfo) {
+      throw new Error(`Trading for this asset (${paymentTokenAddress}) is not yet supported on this chain with opensea.`);
+    }
+
+    const ERC20Asset = getERC20Asset({
+      priceInBaseUnits,
+      tokenAddress: paymentTokenAddress!,
     });
 
-    if (this.chainId === 1 || this.chainId === 4) {
-      const seaport = new OpenSeaPort(web3Provider, {
-        ...(this.chainId === 4 && { networkName: Network.Rinkeby }),
-        apiKey: openseaApiKey,
+    await this._approveAssetsStatuses([ERC20Asset]);
+
+    const results = await Promise.all(this.enabledPlatforms.map(async (platform) => {
+      const sdk = this._getSdk(platform);
+      const result = await sdk.createOrder({
+        assets: [asset],
+        priceInBaseUnits,
+        paymentTokenAddress,
+        expirationTime,
+        ERC20TokenInfo,
+        orderSide: 'buy',
       });
-      this.marketplaces.opensea = new Opensea(seaport, walletAddress);
-    }
 
-    if (this.chainId === 1 || this.chainId === 3) {
-      const nftSwapSdk = new NftSwapV4(
-        this.provider,
-        this.wallet,
-        this.chainId
-      );
-      this.marketplaces.traderxyz = new TraderXyz(
-        this.chainId,
-        nftSwapSdk,
-        walletAddress
-      );
-    }
+      return {
+        platform,
+        result,
+      };
+    }));
+
+    return transformCreateOrderResults(results);
   }
 
-  async makeOrder(
-    makerAsset: Asset,
-    takerAsset: Asset,
-    options?: MakeOrderOptions
-  ): Promise<Order[]> {
-    // @ts-ignore
-    return Promise.all(
-      Object.entries(this.marketplaces)
-        .filter(([_, marketplace]) => marketplace)
-        .map(async ([marketplaceName, marketplace]) => ({
-          marketplaceName,
-          marketplaceOrder: await marketplace.makeOrder(
-            makerAsset,
-            takerAsset,
-            options
-          ),
-        }))
-    );
+  public async getAssetOrders({
+    asset,
+    orderSide,
+  }: {
+    asset: TradableAsset;
+    orderSide?: OrderSideType;
+  }) {
+    const results = await Promise.all(this.enabledPlatforms.map(async (platform) => {
+      const sdk = this._getSdk(platform);
+      const result = await sdk.getAssetOrders({
+        asset,
+        orderSide,
+      });
+
+      return {
+        platform,
+        result,
+      };
+    }));
+
+    return results.reduce((acc, { platform, result }) => {
+      const platformOrders = result.map((order) => ({
+        platform,
+        order,
+      }));
+      acc[platform] = platformOrders;
+
+      return acc;
+    }, {} as GetAssetOrdersResponse);
   }
 
-  async getOrders(options?: GetOrdersOptions): Promise<GetOrdersResponse> {
-    const orders = (
-      await Promise.all(
-        Object.entries(this.marketplaces)
-          .filter(([_, marketplace]) => marketplace)
-          .map(async ([marketplaceName, marketplace]) => {
-            const orders = await marketplace.getOrders(options);
-            return orders.map((marketplaceOrder: any) => ({
-              marketplaceName,
-              marketplaceOrder,
-            }));
-          })
-      )
-    ).flat();
-    return {
-      orders,
-    };
+  public fulfillOrder({ platform, order }: PlatformOrder) {
+    const sdk = this._getSdk(platform);
+    return sdk.fulfillOrder(order);
   }
 
-  async takeOrder(order: Order): Promise<TakeOrderResponse> {
-    const { marketplaceName } = order;
-    const marketplace = this.marketplaces[marketplaceName];
-    if (!marketplace) {
-      throw new Error(`unknown marketplace: ${marketplaceName} order`);
-    }
-
-    // @ts-ignore
-    return {
-      marketplaceName,
-      // @ts-ignore
-      marketplaceResponse: await marketplace.takeOrder(order.marketplaceOrder),
-    };
+  public cancelOrder({ platform, order }: PlatformOrder) {
+    const sdk = this._getSdk(platform);
+    return sdk.cancelOrder(order);
   }
-
-  async cancelOrder(order: Order): Promise<CancelOrderResponse> {
-    const { marketplaceName } = order;
-    const marketplace = this.marketplaces[marketplaceName];
-    if (!marketplace) {
-      throw new Error(`unknown marketplace: ${marketplaceName} order`);
-    }
-
-    // @ts-ignore
-    return {
-      marketplaceName,
-      marketplaceResponse: await marketplace.cancelOrder(
-        // @ts-ignore
-        order.marketplaceOrder
-      ),
-    };
-  }
-}
+};
