@@ -25,14 +25,16 @@ export { SUPPORTED_TOKEN_TYPES } from './constants';
 export type { WrappedOrder, SupportedTokenType, SupportedPlatformType, OrderSideType } from './types';
 
 interface CommerceSdkConfig {
-  apiKeys?: {
-    opensea?: string,
-  }
   chainId?: number;
   customProviders?: CustomProvidersConfig;
   makerAddress?: string;
-  traderxyzGasLimit?: string;
   selectedPlatforms?: SupportedPlatformType[];
+  openseaConfig?: {
+    apiKey?: string;
+  }
+  traderxyzConfig?: {
+    gasLimit?: string;
+  }
 }
 
 const traderxyzSupportedChains = Object.keys(SupportedChainIdsV4).reduce((acc, entry) => {
@@ -75,7 +77,7 @@ export class CommerceSdk {
   readonly selectedPlatforms: SupportedPlatformType[];
 
   constructor(config?: CommerceSdkConfig) {
-    const { apiKeys, chainId = 1, customProviders, makerAddress, traderxyzGasLimit, selectedPlatforms } = config || {};
+    const { chainId = 1, customProviders, makerAddress, selectedPlatforms, openseaConfig, traderxyzConfig } = config || {};
 
     if ((typeof window === 'undefined' || !window.ethereum) && !customProviders) {
       throw new Error('"customProviders" required if "window.ethereum" is unavailable.');
@@ -97,7 +99,7 @@ export class CommerceSdk {
       console.error(this._getNoPlatformsErrorMessage());
     }
 
-    const { traderxyzSdk, error } = getTraderxyzSdk({ chainId, customProviders, makerAddress, gasLimit: traderxyzGasLimit });
+    const { traderxyzSdk, error } = getTraderxyzSdk({ chainId, customProviders, makerAddress, gasLimit: traderxyzConfig?.gasLimit });
     if (error && (!this.selectedPlatforms.length || !this.selectedPlatforms.includes('traderxyz'))) {
       console.error(`TraderxyzSdk initialization error with chainId ${chainId}:`, error);
     }
@@ -105,7 +107,7 @@ export class CommerceSdk {
     this.traderxyzSdk = traderxyzSdk;
     const useRinkebyTestnet = chainId === 4;
     this.openseaSdk = new OpenseaSdk({
-      apiKey: apiKeys?.opensea,
+      apiKey: openseaConfig?.apiKey,
       useRinkebyTestnet,
       customProvider: customProviders?.hdWallet,
       makerAddress,
