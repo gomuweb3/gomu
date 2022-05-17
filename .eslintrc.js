@@ -28,5 +28,6 @@ module.exports = {
     ],
     "import/no-cycle": "error",
     "no-unused-vars": "off",
+    "endOfLine":"auto"
   },
 };
