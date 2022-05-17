@@ -88,10 +88,6 @@ export class CommerceSdk {
         return acc;
       }
       if (SUPPORTED_CHAINS_MAPPING[key].includes(chainId)) {
-        if (key === 'opensea' && !apiKeys?.opensea) {
-          console.warn('Opensea is not initialized because apiKey is missing.');
-          return acc;
-        }
         acc.push(key);
       }
       return acc;
