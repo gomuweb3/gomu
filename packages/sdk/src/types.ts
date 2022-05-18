@@ -11,12 +11,12 @@ export type OpenseaSupportedNetwork = 'main' | 'rinkeby';
 
 export type OrderSideType = 'buy' | 'sell';
 
-export type TraderxyzNftType = 'ERC721' | 'ERC1155';
+export type NftType = 'ERC721' | 'ERC1155';
 
 export interface TradableAsset {
   tokenAddress: string;
   tokenId: string;
-  type: SwappableAssetV4['type'];
+  type: NftType;
 }
 
 export interface WrappedOrder {
@@ -36,7 +36,7 @@ export interface TraderxyzOrder { // REQUIRES SYNC WITH SearchOrdersResponsePayl
   nftToken: string;
   nftTokenId: string;
   nftTokenAmount: string;
-  nftType: TraderxyzNftType;
+  nftType: NftType;
   sellOrBuyNft: 'buy' | 'sell';
   chainId: string;
   order: SignedNftOrderV4Serialized;
