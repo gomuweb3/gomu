@@ -45,12 +45,12 @@ const traderxyzSupportedChains = Object.keys(SupportedChainIdsV4).reduce((acc, e
   return acc;
 }, [] as number[]);
 
-const SUPPORTED_CHAINS_MAPPING: Record<SupportedPlatformType, number[]> = {
+export const SUPPORTED_PLATFORMS: SupportedPlatformType[] = ['opensea', 'traderxyz'];
+
+export const SUPPORTED_CHAINS: Record<SupportedPlatformType, number[]> = {
   opensea: [1, 4],
   traderxyz: traderxyzSupportedChains,
 };
-
-const SUPPORTED_PLATFORMS: SupportedPlatformType[] = ['opensea', 'traderxyz'];
 
 const getTraderxyzSdk = (config: TraderxyzConfig) => {
   let traderxyzSdk;
@@ -73,7 +73,6 @@ export class CommerceSdk {
   private sdkMapping: Record<SupportedPlatformType, TraderxyzSdk | OpenseaSdk>;
   readonly chainId: number;
   readonly enabledPlatforms: SupportedPlatformType[];
-  readonly supportedChains = SUPPORTED_CHAINS_MAPPING;
   readonly selectedPlatforms: SupportedPlatformType[];
 
   constructor(config?: CommerceSdkConfig) {
@@ -89,7 +88,7 @@ export class CommerceSdk {
       if (selectedPlatforms?.length && !selectedPlatforms.includes(key)) {
         return acc;
       }
-      if (SUPPORTED_CHAINS_MAPPING[key].includes(chainId)) {
+      if (SUPPORTED_CHAINS[key].includes(chainId)) {
         acc.push(key);
       }
       return acc;
@@ -122,7 +121,7 @@ export class CommerceSdk {
 
   private _getNoPlatformsErrorMessage() {
     return `ChainId ${this.chainId} doesn't have supported platforms with this configuration.
-    Supported chains: ${JSON.stringify(this.supportedChains)}.
+    Supported chains: ${JSON.stringify(SUPPORTED_CHAINS)}.
     ${this.selectedPlatforms?.length ? `Selected platforms configuration: ${JSON.stringify(this.selectedPlatforms)}` : ''}`;
   }
 
