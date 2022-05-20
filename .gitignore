@@ -14,4 +14,4 @@
 **/.idea
 
 # Ignore built ts files
-packages/**/dist/**/*
+packages/**/lib/**/*

@@ -1,17 +1,20 @@
-import { Asset, GetOrdersOptions, MakeOrderOptions } from "../types";
+import { GetOrdersParams, MakeOrderParams } from "../types";
 
 export interface Marketplace<Order> {
-  makeOrder(
-    makerAsset: Asset,
-    takerAsset: Asset,
-    { taker }: MakeOrderOptions
-  ): Promise<Order>;
+  makeOrder({
+    makerAssets,
+    takerAssets,
+    taker,
+    expirationTime,
+  }: MakeOrderParams): Promise<Order>;
+
   getOrders({
     makerAsset,
     maker,
     takerAsset,
     taker,
-  }: GetOrdersOptions): Promise<any>;
+  }: GetOrdersParams): Promise<any>;
+
   takeOrder(order: Order): Promise<any>;
   cancelOrder(order: Order): Promise<any>;
 }

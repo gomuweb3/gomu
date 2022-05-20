@@ -1,104 +1,111 @@
-import { BaseProvider, JsonRpcProvider } from "@ethersproject/providers";
-import { Wallet } from "@ethersproject/wallet";
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
-import HDWalletProvider from "@truffle/hdwallet-provider";
-import { Network, OpenSeaPort } from "opensea-js";
+import { Signer } from "@ethersproject/abstract-signer";
+import { Web3Provider } from "@ethersproject/providers";
 
-import { Opensea } from "./marketplaces/Opensea";
-import { TraderXyz } from "./marketplaces/TraderXyz";
+import { Opensea, OpenseaConfig } from "./marketplaces/Opensea";
+import { Trader, TraderConfig } from "./marketplaces/Trader";
 import {
   Asset,
   CancelOrderResponse,
-  GetOrdersOptions,
+  Erc1155Asset,
+  Erc20Asset,
+  Erc721Asset,
+  GetOrdersParams,
   GetOrdersResponse,
-  MakeOrderOptions,
+  MakeOrderParams,
   Order,
   TakeOrderResponse,
 } from "./types";
 
-export { Asset };
+export { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
 
-export interface GomuOptions {
-  wallet: Wallet;
-  chainId?: number;
-  openseaApiKey?: string;
+export interface GomuConfig {
+  provider: Web3Provider;
+  openseaConfig?: OpenseaConfig;
+  traderConfig?: TraderConfig;
+}
+
+interface _GomuConfig extends GomuConfig {
+  chainId: number;
+  address: string;
+  signer: Signer;
 }
 
 interface Marketplaces {
   opensea?: Opensea;
-  traderxyz?: TraderXyz;
+  trader?: Trader;
 }
 
 export default class Gomu {
-  private readonly provider: BaseProvider;
-  private readonly chainId: number;
-  private readonly wallet: Wallet;
   readonly marketplaces: Marketplaces = {};
 
-  constructor(
-    provider: BaseProvider,
-    { wallet, chainId = 1, openseaApiKey }: GomuOptions
-  ) {
-    this.provider = provider;
-    this.wallet = wallet;
-    this.chainId = chainId;
-
-    const walletAddress = this.wallet.address;
-
-    const web3Provider = new HDWalletProvider({
-      privateKeys: [this.wallet.privateKey],
-      url: (this.wallet.provider as JsonRpcProvider).connection.url,
+  static async new({
+    provider,
+    openseaConfig = {},
+    traderConfig = {},
+  }: GomuConfig): Promise<Gomu> {
+    const signer = await provider.getSigner();
+    const [address, chainId] = await Promise.all([
+      signer.getAddress(),
+      signer.getChainId(),
+    ]);
+    return new Gomu({
+      provider,
+      chainId,
+      address,
+      signer,
+      openseaConfig,
+      traderConfig,
     });
+  }
 
-    if (this.chainId === 1 || this.chainId === 4) {
-      const seaport = new OpenSeaPort(web3Provider, {
-        ...(this.chainId === 4 && { networkName: Network.Rinkeby }),
-        apiKey: openseaApiKey,
+  constructor({
+    provider,
+    chainId = 1,
+    address,
+    signer,
+    openseaConfig,
+    traderConfig,
+  }: _GomuConfig) {
+    if (Opensea.supportsChainId(chainId)) {
+      this.marketplaces.opensea = new Opensea({
+        ...openseaConfig,
+        // @ts-ignore
+        provider: provider.provider,
+        chainId,
+        address,
       });
-      this.marketplaces.opensea = new Opensea(seaport, walletAddress);
     }
 
-    if (this.chainId === 1 || this.chainId === 3) {
-      const nftSwapSdk = new NftSwapV4(
-        this.provider,
-        this.wallet,
-        this.chainId
-      );
-      this.marketplaces.traderxyz = new TraderXyz(
-        this.chainId,
-        nftSwapSdk,
-        walletAddress
-      );
+    if (Trader.supportsChainId(chainId)) {
+      this.marketplaces.trader = new Trader({
+        ...traderConfig,
+        provider,
+        chainId,
+        address,
+        signer,
+      });
     }
   }
 
-  async makeOrder(
-    makerAsset: Asset,
-    takerAsset: Asset,
-    options?: MakeOrderOptions
-  ): Promise<Order[]> {
+  async makeOrder(params: MakeOrderParams): Promise<Order[]> {
     // @ts-ignore
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([_, marketplace]) => marketplace)
         .map(async ([marketplaceName, marketplace]) => ({
           marketplaceName,
-          marketplaceOrder: await marketplace.makeOrder(
-            makerAsset,
-            takerAsset,
-            options
-          ),
+          marketplaceOrder: await marketplace.makeOrder(params),
         }))
     );
   }
 
-  async getOrders(options?: GetOrdersOptions): Promise<GetOrdersResponse> {
+  async getOrders(params?: GetOrdersParams): Promise<GetOrdersResponse> {
     const orders = (
       await Promise.all(
         Object.entries(this.marketplaces)
           .filter(([_, marketplace]) => marketplace)
           .map(async ([marketplaceName, marketplace]) => {
-            const orders = await marketplace.getOrders(options);
+            const orders = await marketplace.getOrders(params);
             return orders.map((marketplaceOrder: any) => ({
               marketplaceName,
               marketplaceOrder,

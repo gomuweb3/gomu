@@ -5,15 +5,16 @@
     "start": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@ethersproject/providers": "^5.6.5",
-    "@ethersproject/wallet": "^5.6.0",
-    "@gomu/sdk": "latest"
+    "@ethersproject/providers": "^5.6.6",
+    "@ethersproject/wallet": "^5.6.1",
+    "@gomuweb3/sdk": "latest",
+    "@truffle/hdwallet-provider": "^2.0.8"
   },
   "devDependencies": {
     "ts-node": "^10.7.0",
     "typescript": "^4.6.4"
   },
   "resolutions": {
-    "@gomu/sdk": "portal:../../packages/sdk"
+    "@gomuweb3/sdk": "portal:../../packages/sdk"
   }
 }

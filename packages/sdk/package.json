@@ -1,23 +1,33 @@
 {
-  "name": "@gomu/sdk",
-  "packageManager": "yarn@3.2.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "name": "@gomuweb3/sdk",
+  "version": "0.1.0",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gomuweb3/gomu",
+    "directory": "packages/sdk"
+  },
   "scripts": {
     "build": "yarn run -T build",
     "lint": "yarn run -T lint"
   },
   "dependencies": {
-    "@ethersproject/abstract-signer": "^5.6.0",
-    "@ethersproject/bignumber": "^5.6.0",
-    "@ethersproject/contracts": "^5.6.0",
-    "@ethersproject/providers": "^5.6.4",
-    "@ethersproject/wallet": "^5.6.0",
+    "@ethersproject/abstract-signer": "^5.6.1",
+    "@ethersproject/bignumber": "^5.6.1",
+    "@ethersproject/contracts": "^5.6.1",
+    "@ethersproject/providers": "^5.6.6",
     "@traderxyz/nft-swap-sdk": "^0.23.0",
-    "@truffle/hdwallet-provider": "^2.0.8",
     "bignumber.js": "^9.0.2",
     "opensea-js": "^3.0.4",
-    "web3": "^1.7.3",
-    "web3-providers-http": "^1.7.3"
-  }
+    "web3": "^1.7.3"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "packageManager": "yarn@3.2.0"
 }
