@@ -37,6 +37,14 @@ export interface MakeOrderParams {
   expirationTime?: Date;
 }
 
+export interface MakeOrderParamsSimplified {
+  assets: Asset[];
+  amount: bigint;
+  paymentTokenAddress: string;
+  taker?: string;
+  expirationTime?: Date;
+}
+
 interface Opensea {
   marketplaceName: "opensea";
 }

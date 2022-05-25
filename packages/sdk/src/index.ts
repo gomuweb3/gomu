@@ -12,6 +12,7 @@ import {
   GetOrdersParams,
   GetOrdersResponse,
   MakeOrderParams,
+  MakeOrderParamsSimplified,
   Order,
   TakeOrderResponse,
 } from "./types";
@@ -97,6 +98,36 @@ export default class Gomu {
           marketplaceOrder: await marketplace.makeOrder(params),
         }))
     );
+  }
+
+  async makeSellOrder({
+    assets,
+    amount,
+    paymentTokenAddress,
+    taker,
+    expirationTime
+  }: MakeOrderParamsSimplified) {
+    return this.makeOrder({
+      makerAssets: assets,
+      takerAssets: [{ amount, contractAddress: paymentTokenAddress, type: "ERC20" }],
+      taker,
+      expirationTime,
+    });
+  }
+
+  async makeBuyOrder({
+    assets,
+    amount,
+    paymentTokenAddress,
+    taker,
+    expirationTime
+  }: MakeOrderParamsSimplified) {
+    return this.makeOrder({
+      makerAssets: [{ amount, contractAddress: paymentTokenAddress, type: "ERC20" }],
+      takerAssets: assets,
+      taker,
+      expirationTime,
+    });
   }
 
   async getOrders(params?: GetOrdersParams): Promise<GetOrdersResponse> {
