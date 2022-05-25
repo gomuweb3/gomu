@@ -1,14 +1,154 @@
-# Gomu SDK
-Create Web 3 experiences easily with Gomu SDK.
+## Installation
 
-## Install
-Install with npm:
-```
+```bash
 npm install @gomuweb3/sdk
 ```
-Install with yarn:
-```
-yarn add @gmouweb3/sdk
+
+Please note that some node-native sub-dependencies aren't polyfilled in Webpack 5, so consider using other versions of Webpack. If you are using `create-react-app`, then downgrading `react-script` to version 4 might help.
+
+## Getting Started
+
+### Initialization
+
+Initialization with metamask (wallet accounts must be connected first) and ethers:
+
+```JavaScript
+import { Web3Provider } from '@ethersproject/providers';
+import Gomu from '@gomuweb3/sdk';
+// OR
+const Gomu = require('@gomuweb3/gomu').default; // commonjs
+
+const provider = new Web3Provider(window.ethereum);
+
+const gomuSdk = new Gomu({
+  provider,
+  signer: provider.getSigner(),
+  address: '<ACCOUNT_ADDRESS>',
+  chainId: 1, // defaults to 1
+  openseaConfig: { apiKey: '<API_KEY>' },
+});
 ```
 
-See [nft-swap](https://github.com/gomuweb3/gomu/tree/main/examples/nft-swap) for a code example on how to use it.
+NodeJS example with Ropsten network:
+
+```bash
+npm install @gomuweb3/sdk ethers @truffle/hdwallet-provider
+```
+
+```Javascript
+import { Web3Provider } from '@ethersproject/providers';
+import { Wallet } from '@ethersproject/wallet';
+import HDWalletProvider from '@truffle/hdwallet-provider';
+import Gomu from '@gomuweb3/sdk';
+
+const networkUrl = '<ALCHEMY_OR_INFURA_URL>';
+const mnemonic = '<WALLET_MNEMONIC>';
+
+const provider = new HDWalletProvider({
+  mnemonic,
+  networkUrl,
+});
+
+const wallet = Wallet.fromMnemonic(mnemonic);
+
+const gomuSdk = new Gomu({
+  provider: new Web3Provider(provider),
+  signer: wallet,
+  address: wallet.address,
+  chainId: 3, // ropsten
+});
+```
+
+React hook example that re-initializes sdk on chainId/address change:
+
+```JavaScript
+import { useMemo } from 'react';
+import { Web3Provider } from '@ethersproject/providers';
+import Gomu from '@gomuweb3/sdk';
+
+const useGomuSdk = (chainId, address) => {
+  return useMemo(() => {
+    const provider = new Web3Provider(window.ethereum);
+
+    return new Gomu({
+      provider,
+      signer: provider.getSigner(),
+      address,
+      chainId,
+      openseaConfig: { apiKey: process.env.REACT_APP_OPENSEA_KEY },
+    });
+  }, [chainId, address]);
+};
+```
+
+### Usage
+
+Creating sell orders for asset on opensea and traderxyz in WETH on mainnet:
+
+```JavaScript
+const makerAsset = {
+  contractAddress: '<ASSET_CONTRACT_ADDRESS>',
+  tokenId: '<TOKEN_ID>',
+  type: 'ERC721', // or ERC1155
+};
+
+const takerAsset = {
+  contractAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH ERC20 Contract Address
+  type: 'ERC20',
+  amount: 12000000000000000000n, // 12 WETH in BigInt
+  // OR
+  amount: BigInt('12000000000000000000'),
+};
+
+gomuSdk.makeOrder({
+  makerAssets: [makerAsset],
+  takerAssets: [takerAsset],
+}).then(console.log); // Order[]
+```
+
+Creating buy orders in WETH on mainnet:
+
+```JavaScript
+const makerAsset = {
+  contractAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH ERC20 Contract Address
+  amount: 33000000000000000000n, // 33 WETH in BigInt
+  type: 'ERC20',
+};
+
+const takerAsset = {
+  contractAddress: '<ASSET_CONTRACT_ADDRESS>',
+  tokenId: '<TOKEN_ID>',
+  type: 'ERC721', // or ERC1155
+};
+
+gomuSdk.makeOrder({
+  makerAssets: [makerAsset],
+  takerAssets: [takerAsset],
+}).then(console.log); // Order[]
+```
+
+Get orders where you are maker, and cancel first one:
+
+```JavaScript
+const getOrdersThenCancelFirstOne = async() {
+  const { orders } = await gomuSdk.getOrders({
+    maker: '<YOUR_ACCOUNT_ADDRESS>',
+  });
+  const cancelledResponse = await gomuSdk.cancelOrder(orders[0]);
+};
+```
+
+Get orders for specific asset for sale and take first order:
+
+```JavaScript
+const getOrdersThenTakeFirstOne = async() {
+  const { orders } = await gomuSdk.getOrders({
+    makerAsset: {
+      contractAddress: '<ASSET_CONTRACT_ADDRESS>',
+      tokenId: '<TOKEN_ID>',
+      type: 'ERC721',
+    },
+  });
+  const takenOrderResponse = await gomuSdk.takeOrder(orders[0]);
+};
+```
