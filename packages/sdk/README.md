@@ -10,7 +10,7 @@ npm install @gomuweb3/sdk
 
 Install with yarn:
 ```bash
-yarn add @gmouweb3/sdk
+yarn add @gomuweb3/sdk
 ```
 
 ## Getting Started
