@@ -1,10 +1,17 @@
+# Gomu SDK
+Create Web 3 experiences easily with Gomu SDK.
+
 ## Installation
 
+Install with npm:
 ```bash
 npm install @gomuweb3/sdk
 ```
 
-Please note that some node-native sub-dependencies aren't polyfilled in Webpack 5, so consider using other versions of Webpack. If you are using `create-react-app`, then downgrading `react-script` to version 4 might help.
+Install with yarn:
+```bash
+yarn add @gmouweb3/sdk
+```
 
 ## Getting Started
 
@@ -80,6 +87,8 @@ const useGomuSdk = (chainId, address) => {
   }, [chainId, address]);
 };
 ```
+
+Please note that some node-native sub-dependencies aren't polyfilled in Webpack 5, so consider using other versions of Webpack. If you are using `create-react-app`, then downgrading `react-script` to version 4 might help.
 
 ### Usage
 
