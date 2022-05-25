@@ -147,7 +147,7 @@ const getOrdersThenCancelFirstOne = async() {
 };
 ```
 
-Get orders for specific asset for sale and take first order:
+Get orders for specific asset for sale and take first order. Do note, when implementing this, orders are not sorted by value, so you probably want to sort for higher values:
 
 ```JavaScript
 const getOrdersThenTakeFirstOne = async() {
