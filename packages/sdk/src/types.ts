@@ -37,6 +37,15 @@ export interface MakeOrderParams {
   expirationTime?: Date;
 }
 
+export interface MakeSellOrderParams {
+  assets: Asset[];
+  erc20Asset: Omit<Erc20Asset, "type">;
+  taker?: string;
+  expirationTime?: Date;
+}
+
+export type MakeBuyOrderParams = MakeSellOrderParams;
+
 interface Opensea {
   marketplaceName: "opensea";
 }
