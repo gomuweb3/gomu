@@ -39,10 +39,7 @@ export interface MakeOrderParams {
 
 export interface MakeSellOrderParams {
   assets: Asset[];
-  erc20Asset: {
-    contractAddress: string;
-    amount: bigint;
-  }
+  erc20Asset: Omit<Erc20Asset, "type">;
   taker?: string;
   expirationTime?: Date;
 }
