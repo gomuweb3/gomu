@@ -21,9 +21,9 @@ Initialization with metamask (wallet accounts must be connected first) and ether
 
 ```JavaScript
 import { Web3Provider } from '@ethersproject/providers';
-import Gomu from '@gomuweb3/sdk';
+import { Gomu } from '@gomuweb3/sdk';
 // OR
-const Gomu = require('@gomuweb3/gomu').default; // commonjs
+const { Gomu } = require('@gomuweb3/gomu'); // commonjs
 
 const provider = new Web3Provider(window.ethereum);
 
@@ -46,7 +46,7 @@ npm install @gomuweb3/sdk ethers @truffle/hdwallet-provider
 import { Web3Provider } from '@ethersproject/providers';
 import { Wallet } from '@ethersproject/wallet';
 import HDWalletProvider from '@truffle/hdwallet-provider';
-import Gomu from '@gomuweb3/sdk';
+import { Gomu } from '@gomuweb3/sdk';
 
 const networkUrl = '<ALCHEMY_OR_INFURA_URL>';
 const mnemonic = '<WALLET_MNEMONIC>';
@@ -71,7 +71,7 @@ React hook example that re-initializes sdk on chainId/address change:
 ```JavaScript
 import { useMemo } from 'react';
 import { Web3Provider } from '@ethersproject/providers';
-import Gomu from '@gomuweb3/sdk';
+import { Gomu } from '@gomuweb3/sdk';
 
 const useGomuSdk = (chainId, address) => {
   return useMemo(() => {
