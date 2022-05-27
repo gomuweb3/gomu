@@ -1,4 +1,4 @@
-import { GetOrdersParams, MakeOrderParams } from "../types";
+import type { GetOrdersParams, MakeOrderParams } from "../types";
 
 export interface Marketplace<Order> {
   makeOrder({

@@ -1,23 +1,7 @@
 import BigNumber from "bignumber.js";
 import { Network, OpenSeaPort, WyvernProtocol } from "opensea-js";
-import {
-  Asset as _Asset,
-  OpenSeaAPIConfig,
-  Order,
-  OrderQuery,
-  OrderSide,
-  SaleKind,
-  WyvernSchemaName,
-} from "opensea-js/lib/types";
+import { OrderSide, SaleKind, WyvernSchemaName } from "opensea-js/lib/types";
 import Web3 from "web3";
-
-import {
-  Erc1155Asset,
-  Erc20Asset,
-  Erc721Asset,
-  GetOrdersParams,
-  MakeOrderParams,
-} from "../types";
 
 import { Marketplace } from "./Marketplace";
 import {
@@ -26,6 +10,20 @@ import {
   assertAssetsIsNotErc20AndErc20,
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
+
+import type {
+  Erc1155Asset,
+  Erc20Asset,
+  Erc721Asset,
+  GetOrdersParams,
+  MakeOrderParams,
+} from "../types";
+import type {
+  Asset as _Asset,
+  OpenSeaAPIConfig,
+  Order,
+  OrderQuery,
+} from "opensea-js/lib/types";
 
 export interface OpenseaConfig
   extends Exclude<OpenSeaAPIConfig, "networkName"> {}

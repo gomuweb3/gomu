@@ -1,4 +1,4 @@
-import { Asset } from "../types";
+import type { Asset } from "../types";
 
 export function assertAssetsIsNotEmpty(assets: Asset[], prefix: string): void {
   if (!assets || assets.length === 0) {

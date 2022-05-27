@@ -24,7 +24,11 @@ module.exports = {
     ],
     "import/order": [
       "error",
-      { alphabetize: { order: "asc" }, "newlines-between": "always" },
+      {
+        alphabetize: { order: "asc" },
+        groups: ["builtin", "external", "parent", "sibling", "index", "type"],
+        "newlines-between": "always",
+      },
     ],
     "import/no-cycle": "error",
     "no-unused-vars": "off",

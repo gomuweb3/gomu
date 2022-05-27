@@ -1,21 +1,25 @@
 import { Signer } from "@ethersproject/abstract-signer";
-import { ContractReceipt, ContractTransaction } from "@ethersproject/contracts";
 import { BaseProvider } from "@ethersproject/providers";
-import { NftSwapV4, SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
-import {
-  PostOrderResponsePayload,
-  SearchOrdersParams,
-} from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
+import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
 
-import { Asset, GetOrdersParams, MakeOrderParams } from "../types";
-
-import { Marketplace } from "./Marketplace";
 import {
   assertAssetsIsNotBundled,
   assertAssetsIsNotEmpty,
   assertAssetsIsNotErc20AndErc20,
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
+
+import type { Asset, GetOrdersParams, MakeOrderParams } from "../types";
+import type { Marketplace } from "./Marketplace";
+import type {
+  ContractReceipt,
+  ContractTransaction,
+} from "@ethersproject/contracts";
+import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
+import type {
+  PostOrderResponsePayload,
+  SearchOrdersParams,
+} from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 
 export interface TraderConfig {
   gasLimit?: number;

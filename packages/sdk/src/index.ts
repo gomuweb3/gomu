@@ -1,9 +1,12 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
-import { Opensea, OpenseaConfig } from "./marketplaces/Opensea";
-import { Trader, TraderConfig } from "./marketplaces/Trader";
-import {
+import { Opensea } from "./marketplaces/Opensea";
+import { Trader } from "./marketplaces/Trader";
+
+import type { OpenseaConfig } from "./marketplaces/Opensea";
+import type { TraderConfig } from "./marketplaces/Trader";
+import type {
   Asset,
   CancelOrderResponse,
   Erc1155Asset,
@@ -18,7 +21,7 @@ import {
   TakeOrderResponse,
 } from "./types";
 
-export { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
+export type { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
 
 export interface GomuConfig {
   provider: Web3Provider;

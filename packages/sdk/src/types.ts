@@ -1,6 +1,9 @@
-import { ContractReceipt, ContractTransaction } from "@ethersproject/contracts";
-import { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
-import { Order as _OpenseaOrder } from "opensea-js/lib/types";
+import type {
+  ContractReceipt,
+  ContractTransaction,
+} from "@ethersproject/contracts";
+import type { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
+import type { Order as _OpenseaOrder } from "opensea-js/lib/types";
 
 export interface Erc20Asset {
   contractAddress: string;
