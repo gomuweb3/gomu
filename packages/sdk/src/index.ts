@@ -12,7 +12,8 @@ import {
   GetOrdersParams,
   GetOrdersResponse,
   MakeOrderParams,
-  MakeOrderParamsSimplified,
+  MakeSellOrderParams,
+  MakeBuyOrderParams,
   Order,
   TakeOrderResponse,
 } from "./types";
@@ -102,14 +103,13 @@ export default class Gomu {
 
   async makeSellOrder({
     assets,
-    amount,
-    paymentTokenAddress,
+    erc20Asset: { contractAddress, amount },
     taker,
-    expirationTime
-  }: MakeOrderParamsSimplified) {
+    expirationTime,
+  }: MakeSellOrderParams): Promise<Order[]> {
     return this.makeOrder({
       makerAssets: assets,
-      takerAssets: [{ amount, contractAddress: paymentTokenAddress, type: "ERC20" }],
+      takerAssets: [{ contractAddress, amount, type: "ERC20" }],
       taker,
       expirationTime,
     });
@@ -117,13 +117,12 @@ export default class Gomu {
 
   async makeBuyOrder({
     assets,
-    amount,
-    paymentTokenAddress,
+    erc20Asset: { contractAddress, amount },
     taker,
-    expirationTime
-  }: MakeOrderParamsSimplified) {
+    expirationTime,
+  }: MakeBuyOrderParams): Promise<Order[]> {
     return this.makeOrder({
-      makerAssets: [{ amount, contractAddress: paymentTokenAddress, type: "ERC20" }],
+      makerAssets: [{ contractAddress, amount, type: "ERC20" }],
       takerAssets: assets,
       taker,
       expirationTime,
