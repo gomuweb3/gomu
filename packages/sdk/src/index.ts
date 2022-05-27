@@ -37,7 +37,7 @@ interface Marketplaces {
   trader?: Trader;
 }
 
-export default class Gomu {
+export class Gomu {
   readonly marketplaces: Marketplaces = {};
 
   static async new({
