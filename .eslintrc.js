@@ -22,6 +22,7 @@ module.exports = {
       "as-needed",
       { requireReturnForObjectLiteral: false },
     ],
+    "endOfLine": "auto",
     "import/order": [
       "error",
       {
@@ -33,6 +34,5 @@ module.exports = {
     "import/no-cycle": "error",
     "no-unused-vars": "off",
     "prefer-template": "error",
-    "endOfLine": "auto",
   },
 };
