@@ -93,13 +93,16 @@ export class Gomu {
     }
   }
 
-  async makeOrder(params: MakeOrderParams): Promise<Order[]> {
+  async makeOrder({
+    marketplaces,
+    ...params
+  }: MakeOrderParams): Promise<Order[]> {
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([marketplaceName, marketplace]) => {
           if (
-            params.marketplaces?.length &&
-            !params.marketplaces.includes(marketplaceName as MarketplaceName)
+            marketplaces?.length &&
+            !marketplaces.includes(marketplaceName as MarketplaceName)
           ) {
             return false;
           }

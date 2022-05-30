@@ -40,7 +40,7 @@ export interface MakeOrderParams {
   expirationTime?: Date;
 
   /** Selected marketplaces */
-  marketplaces?: Array<`${MarketplaceName}`>;
+  marketplaces?: `${MarketplaceName}`[];
 }
 
 export type MakeSellOrderParams = Omit<
