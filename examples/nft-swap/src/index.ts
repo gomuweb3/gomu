@@ -1,6 +1,6 @@
 import { Web3Provider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
-import Gomu, { Asset } from "@gomuweb3/sdk";
+import { Gomu, Asset } from "@gomuweb3/sdk";
 import HDWalletProvider from "@truffle/hdwallet-provider";
 
 async function main(): Promise<void> {
