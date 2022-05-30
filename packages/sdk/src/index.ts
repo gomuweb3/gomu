@@ -17,6 +17,7 @@ import type {
   MakeOrderParams,
   MakeSellOrderParams,
   MakeBuyOrderParams,
+  MarketplaceName,
   Order,
   TakeOrderResponse,
 } from "./types";
@@ -92,43 +93,52 @@ export class Gomu {
     }
   }
 
-  async makeOrder(params: MakeOrderParams): Promise<Order[]> {
-    // @ts-ignore
+  async makeOrder({
+    marketplaces,
+    ...params
+  }: MakeOrderParams): Promise<Order[]> {
     return Promise.all(
       Object.entries(this.marketplaces)
-        .filter(([_, marketplace]) => marketplace)
-        .map(async ([marketplaceName, marketplace]) => ({
-          marketplaceName,
-          marketplaceOrder: await marketplace.makeOrder(params),
-        }))
+        .filter(([marketplaceName, marketplace]) => {
+          if (
+            marketplaces?.length &&
+            !marketplaces.includes(marketplaceName as MarketplaceName)
+          ) {
+            return false;
+          }
+
+          return Boolean(marketplace);
+        })
+        .map(async ([marketplaceName, marketplace]) => {
+          return {
+            marketplaceName,
+            marketplaceOrder: await marketplace.makeOrder(params),
+          } as Order;
+        })
     );
   }
 
   async makeSellOrder({
     assets,
     erc20Asset: { contractAddress, amount },
-    taker,
-    expirationTime,
+    ...params
   }: MakeSellOrderParams): Promise<Order[]> {
     return this.makeOrder({
       makerAssets: assets,
       takerAssets: [{ contractAddress, amount, type: "ERC20" }],
-      taker,
-      expirationTime,
+      ...params,
     });
   }
 
   async makeBuyOrder({
     assets,
     erc20Asset: { contractAddress, amount },
-    taker,
-    expirationTime,
+    ...params
   }: MakeBuyOrderParams): Promise<Order[]> {
     return this.makeOrder({
       makerAssets: [{ contractAddress, amount, type: "ERC20" }],
       takerAssets: assets,
-      taker,
-      expirationTime,
+      ...params,
     });
   }
 

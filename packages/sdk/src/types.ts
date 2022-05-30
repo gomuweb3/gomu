@@ -38,23 +38,32 @@ export interface MakeOrderParams {
 
   /** Expiration time for the order */
   expirationTime?: Date;
+
+  /** Selected marketplaces */
+  marketplaces?: `${MarketplaceName}`[];
 }
 
-export interface MakeSellOrderParams {
+export type MakeSellOrderParams = Omit<
+  MakeOrderParams,
+  "makerAssets" | "takerAssets"
+> & {
   assets: Asset[];
   erc20Asset: Omit<Erc20Asset, "type">;
-  taker?: string;
-  expirationTime?: Date;
-}
+};
 
 export type MakeBuyOrderParams = MakeSellOrderParams;
 
+export enum MarketplaceName {
+  Opensea = "opensea",
+  Trader = "trader",
+}
+
 interface Opensea {
-  marketplaceName: "opensea";
+  marketplaceName: MarketplaceName.Opensea;
 }
 
 interface Trader {
-  marketplaceName: "trader";
+  marketplaceName: MarketplaceName.Trader;
 }
 
 export interface OpenseaOrder extends Opensea {

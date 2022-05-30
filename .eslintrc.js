@@ -17,11 +17,6 @@ module.exports = {
       "error",
       { destructuredArrayIgnorePattern: "^_" },
     ],
-    "arrow-body-style": [
-      "error",
-      "as-needed",
-      { requireReturnForObjectLiteral: false },
-    ],
     "import/order": [
       "error",
       {
