@@ -22,7 +22,6 @@ module.exports = {
       "as-needed",
       { requireReturnForObjectLiteral: false },
     ],
-    "endOfLine": "auto",
     "import/order": [
       "error",
       {
