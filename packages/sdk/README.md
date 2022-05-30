@@ -144,7 +144,7 @@ gomuSdk.makeBuyOrder({
     contractAddress: WETH_ADDRESS,
     amount,
   },
-});
+}).then(console.log); // Order[]
 
 // alternative with makeOrder method
 
