@@ -95,44 +95,66 @@ Please note that some node-native sub-dependencies aren't polyfilled in Webpack 
 Creating sell orders for asset on opensea and traderxyz in WETH on mainnet:
 
 ```JavaScript
-const makerAsset = {
+const YOUR_ASSET = {
   contractAddress: '<ASSET_CONTRACT_ADDRESS>',
   tokenId: '<TOKEN_ID>',
   type: 'ERC721', // or ERC1155
 };
 
-const takerAsset = {
-  contractAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH ERC20 Contract Address
-  type: 'ERC20',
-  amount: 12000000000000000000n, // 12 WETH in BigInt
-  // OR
-  amount: BigInt('12000000000000000000'),
-};
+const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'; // WETH ERC20 Contract Address
+const amount = 12000000000000000000n; // 12 WETH in BigInt
+// OR
+const amount = BigInt('12000000000000000000');
+
+gomuSdk.makeSellOrder({
+  assets: [YOUR_ASSET],
+  erc20Asset: {
+    contractAddress: WETH_ADDRESS
+    amount,
+  },
+}).then(console.log); // Order[]
+
+// alternative with makeOrder method
 
 gomuSdk.makeOrder({
-  makerAssets: [makerAsset],
-  takerAssets: [takerAsset],
+  makerAssets: [YOUR_ASSET],
+  takerAssets: [{
+    contractAddress: WETH_ADDRESS,
+    amount,
+    type: 'ERC20',
+  }],
 }).then(console.log); // Order[]
 ```
 
 Creating buy orders in WETH on mainnet:
 
 ```JavaScript
-const makerAsset = {
-  contractAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH ERC20 Contract Address
-  amount: 33000000000000000000n, // 33 WETH in BigInt
-  type: 'ERC20',
-};
+const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'; // WETH ERC20 Contract Address
+const amount = 33000000000000000000n; // 33 WETH in BigInt
 
-const takerAsset = {
+const TARGET_ASSET = {
   contractAddress: '<ASSET_CONTRACT_ADDRESS>',
   tokenId: '<TOKEN_ID>',
   type: 'ERC721', // or ERC1155
 };
 
+gomuSdk.makeBuyOrder({
+  assets: [TARGET_ASSET],
+  erc20Asset: {
+    contractAddress: WETH_ADDRESS,
+    amount,
+  },
+});
+
+// alternative with makeOrder method
+
 gomuSdk.makeOrder({
-  makerAssets: [makerAsset],
-  takerAssets: [takerAsset],
+  makerAssets: [{
+    contractAddress: WETH_ADDRESS,
+    amount,
+    type: 'ERC20',
+  }],
+  takerAssets: [TARGET_ASSET],
 }).then(console.log); // Order[]
 ```
 
