@@ -76,6 +76,13 @@ export interface TraderOrder extends Trader {
 
 export type Order = OpenseaOrder | TraderOrder;
 
+interface MakeOrderError {
+  marketplaceName: MarketplaceName;
+  error: string;
+}
+
+export type MakeOrderResponse = Order | MakeOrderError;
+
 export interface GetOrdersParams {
   maker?: string;
   makerAsset?: Asset;
