@@ -4,6 +4,10 @@ import type {
 } from "@ethersproject/contracts";
 import type { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 import type { Order as _OpenseaOrder } from "opensea-js/lib/types";
+import type {
+  MakeOrderResult as _LooksRareOrder,
+  ContractReceipt as _LooksRareContractReceipt,
+} from "./marketplaces/LooksRare";
 
 export interface Erc20Asset {
   contractAddress: string;
@@ -56,6 +60,7 @@ export type MakeBuyOrderParams = MakeSellOrderParams;
 export enum MarketplaceName {
   Opensea = "opensea",
   Trader = "trader",
+  Looksrare = "looksrare",
 }
 
 interface Opensea {
@@ -66,6 +71,10 @@ interface Trader {
   marketplaceName: MarketplaceName.Trader;
 }
 
+interface Looksrare {
+  marketplaceName: MarketplaceName.Looksrare;
+}
+
 export interface OpenseaOrder extends Opensea {
   marketplaceOrder: _OpenseaOrder;
 }
@@ -74,7 +83,11 @@ export interface TraderOrder extends Trader {
   marketplaceOrder: PostOrderResponsePayload;
 }
 
-export type Order = OpenseaOrder | TraderOrder;
+export interface LooksRareOrder extends Looksrare {
+  marketplaceOrder: _LooksRareOrder;
+}
+
+export type Order = OpenseaOrder | TraderOrder | LooksRareOrder;
 
 interface MakeOrderError {
   marketplaceName: MarketplaceName;
@@ -102,9 +115,14 @@ export interface TraderTakeOrderResponse extends Trader {
   marketplaceResponse: ContractReceipt;
 }
 
+export interface LooksrareTakeOrderResponse extends Looksrare {
+  marketplaceResponse: _LooksRareContractReceipt;
+}
+
 export type TakeOrderResponse =
   | OpenseaTakeOrderResponse
-  | TraderTakeOrderResponse;
+  | TraderTakeOrderResponse
+  | LooksrareTakeOrderResponse;
 
 export interface OpenseaCancelOrderResponse extends Opensea {
   marketplaceResponse: void;
@@ -114,6 +132,11 @@ export interface TraderCancelOrderResponse extends Trader {
   marketplaceResponse: ContractTransaction;
 }
 
+export interface LooksrareCancelOrderResponse extends Looksrare {
+  marketplaceResponse: _LooksRareContractReceipt;
+}
+
 export type CancelOrderResponse =
   | OpenseaCancelOrderResponse
-  | TraderCancelOrderResponse;
+  | TraderCancelOrderResponse
+  | LooksrareCancelOrderResponse;

@@ -670,8 +670,10 @@ __metadata:
     "@ethersproject/bignumber": ^5.6.1
     "@ethersproject/contracts": ^5.6.1
     "@ethersproject/providers": ^5.6.6
+    "@looksrare/sdk": ^0.7.1
     "@traderxyz/nft-swap-sdk": ^0.23.0
     bignumber.js: ^9.0.2
+    isomorphic-unfetch: ^3.1.0
     opensea-js: ^3.0.4
     web3: ^1.7.3
   languageName: unknown
@@ -692,6 +694,15 @@ __metadata:
   version: 1.2.1
   resolution: "@humanwhocodes/object-schema@npm:1.2.1"
   checksum: a824a1ec31591231e4bad5787641f59e9633827d0a2eaae131a288d33c9ef0290bd16fda8da6f7c0fcb014147865d12118df10db57f27f41e20da92369fcb3f1
+  languageName: node
+  linkType: hard
+
+"@looksrare/sdk@npm:^0.7.1":
+  version: 0.7.1
+  resolution: "@looksrare/sdk@npm:0.7.1"
+  peerDependencies:
+    ethers: ^5.5.4
+  checksum: a475876e0d5829f03282627bd70322ba1fbe68c939f19995f72482d0d7bac074ea5c6df37be7f1f16ba66dd69d2a84954c531ce8f81b2f2d41f13875dbb2590f
   languageName: node
   linkType: hard
 

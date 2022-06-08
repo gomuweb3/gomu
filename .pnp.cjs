@@ -755,8 +755,10 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["@ethersproject/bignumber", "npm:5.6.1"],\
             ["@ethersproject/contracts", "npm:5.6.1"],\
             ["@ethersproject/providers", "npm:5.6.6"],\
+            ["@looksrare/sdk", "virtual:55da5fe25b2fab4b1c24b5fc813679090619036d4bfe7e6651c1f71a253701ead2087d3d9949e5d4a5b7ff1bbb16dae3e55d34037d910fcb9ccef303c9b17533#npm:0.7.1"],\
             ["@traderxyz/nft-swap-sdk", "npm:0.23.0"],\
             ["bignumber.js", "npm:9.0.2"],\
+            ["isomorphic-unfetch", "npm:3.1.0"],\
             ["opensea-js", "npm:3.0.4"],\
             ["web3", "npm:1.7.3"]\
           ],\
@@ -780,6 +782,28 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/@humanwhocodes-object-schema-npm-1.2.1-eb622b5d0e-a824a1ec31.zip/node_modules/@humanwhocodes/object-schema/",\
           "packageDependencies": [\
             ["@humanwhocodes/object-schema", "npm:1.2.1"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["@looksrare/sdk", [\
+        ["npm:0.7.1", {\
+          "packageLocation": "./.yarn/cache/@looksrare-sdk-npm-0.7.1-24f6b5b842-a475876e0d.zip/node_modules/@looksrare/sdk/",\
+          "packageDependencies": [\
+            ["@looksrare/sdk", "npm:0.7.1"]\
+          ],\
+          "linkType": "SOFT"\
+        }],\
+        ["virtual:55da5fe25b2fab4b1c24b5fc813679090619036d4bfe7e6651c1f71a253701ead2087d3d9949e5d4a5b7ff1bbb16dae3e55d34037d910fcb9ccef303c9b17533#npm:0.7.1", {\
+          "packageLocation": "./.yarn/__virtual__/@looksrare-sdk-virtual-a0909f3521/0/cache/@looksrare-sdk-npm-0.7.1-24f6b5b842-a475876e0d.zip/node_modules/@looksrare/sdk/",\
+          "packageDependencies": [\
+            ["@looksrare/sdk", "virtual:55da5fe25b2fab4b1c24b5fc813679090619036d4bfe7e6651c1f71a253701ead2087d3d9949e5d4a5b7ff1bbb16dae3e55d34037d910fcb9ccef303c9b17533#npm:0.7.1"],\
+            ["@types/ethers", null],\
+            ["ethers", null]\
+          ],\
+          "packagePeers": [\
+            "@types/ethers",\
+            "ethers"\
           ],\
           "linkType": "HARD"\
         }]\

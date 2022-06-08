@@ -22,8 +22,10 @@
     "@ethersproject/bignumber": "^5.6.1",
     "@ethersproject/contracts": "^5.6.1",
     "@ethersproject/providers": "^5.6.6",
+    "@looksrare/sdk": "^0.7.1",
     "@traderxyz/nft-swap-sdk": "^0.23.0",
     "bignumber.js": "^9.0.2",
+    "isomorphic-unfetch": "^3.1.0",
     "opensea-js": "^3.0.4",
     "web3": "^1.7.3"
   },
