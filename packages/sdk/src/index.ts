@@ -3,9 +3,11 @@ import { Web3Provider } from "@ethersproject/providers";
 
 import { Opensea } from "./marketplaces/Opensea";
 import { Trader } from "./marketplaces/Trader";
+import { SwapSdk } from "./swap";
 
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
+import type { SwapSdkConfig } from "./swap";
 import type {
   Asset,
   CancelOrderResponse,
@@ -21,6 +23,7 @@ import type {
   Order,
   MakeOrderResponse,
   TakeOrderResponse,
+  SignedSwapOrder,
 } from "./types";
 
 export type { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
@@ -29,6 +32,7 @@ export interface GomuConfig {
   provider: Web3Provider;
   openseaConfig?: OpenseaConfig;
   traderConfig?: TraderConfig;
+  swapSdkConfig?: SwapSdkConfig;
 }
 
 interface _GomuConfig extends GomuConfig {
@@ -44,6 +48,8 @@ interface Marketplaces {
 
 export class Gomu {
   readonly marketplaces: Marketplaces = {};
+  readonly swapSdk: SwapSdk | undefined;
+  readonly chainId: number;
 
   static async new({
     provider,
@@ -72,23 +78,36 @@ export class Gomu {
     signer,
     openseaConfig,
     traderConfig,
+    swapSdkConfig,
   }: _GomuConfig) {
+    this.chainId = chainId;
+
     if (Opensea.supportsChainId(chainId)) {
       this.marketplaces.opensea = new Opensea({
         ...openseaConfig,
+        address,
+        chainId,
         // @ts-ignore
         provider: provider.provider,
-        chainId,
-        address,
       });
     }
 
     if (Trader.supportsChainId(chainId)) {
       this.marketplaces.trader = new Trader({
         ...traderConfig,
-        provider,
-        chainId,
         address,
+        chainId,
+        provider,
+        signer,
+      });
+    }
+
+    if (SwapSdk.supportedChainIds.includes(chainId)) {
+      this.swapSdk = new SwapSdk({
+        ...swapSdkConfig,
+        address,
+        chainId,
+        provider,
         signer,
       });
     }
@@ -119,7 +138,7 @@ export class Gomu {
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : "" + err,
+              error: err instanceof Error ? err.message : String(err),
             };
           }
         })
@@ -199,5 +218,43 @@ export class Gomu {
         order.marketplaceOrder
       ),
     };
+  }
+
+  throwSwapSdkUnsupportedChainError(): void {
+    throw new Error(
+      `Chain ID ${
+        this.chainId
+      } is not supported by swapSdk. Supported chain ids: ${JSON.stringify(
+        SwapSdk.supportedChainIds
+      )}`
+    );
+  }
+
+  async makeSwapOrder({
+    makerAssets,
+    takerAssets,
+  }: {
+    makerAssets: Asset[];
+    takerAssets: Asset[];
+  }): Promise<SignedSwapOrder | void> {
+    if (!this.swapSdk) {
+      return this.throwSwapSdkUnsupportedChainError();
+    }
+
+    return this.swapSdk.makeOrder({ makerAssets, takerAssets });
+  }
+
+  async takeSwapOrder({
+    order,
+    gasLimit,
+  }: {
+    order: SignedSwapOrder;
+    gasLimit?: number;
+  }): Promise<any | void> {
+    if (!this.swapSdk) {
+      return this.throwSwapSdkUnsupportedChainError();
+    }
+
+    return this.swapSdk.takeOrder({ order, gasLimit });
   }
 }
