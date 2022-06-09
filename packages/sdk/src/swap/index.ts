@@ -44,11 +44,7 @@ export class SwapSdk {
     return supportedChainIds.includes(chainId);
   }
 
-  async approveAssetsStatuses({
-    assets,
-  }: {
-    assets: SwappableAsset[];
-  }): Promise<void> {
+  async approveAssetsStatuses(assets: SwappableAsset[]): Promise<void> {
     const approvalStatuses = await Promise.all(
       assets.map((asset) => {
         return this.sdk.loadApprovalStatus(asset, this.address);
@@ -89,7 +85,8 @@ export class SwapSdk {
       this.transformAssetsToSwappableAssets(makerAssets);
     const swappableTakerAssets =
       this.transformAssetsToSwappableAssets(takerAssets);
-    await this.approveAssetsStatuses({ assets: swappableMakerAssets });
+
+    await this.approveAssetsStatuses(swappableMakerAssets);
 
     const order = this.sdk.buildOrder(
       swappableMakerAssets,
@@ -110,7 +107,7 @@ export class SwapSdk {
   }): Promise<any> {
     const { takerAssets } = this.sdk.getAssetsFromOrder(order);
 
-    await this.approveAssetsStatuses({ assets: takerAssets });
+    await this.approveAssetsStatuses(takerAssets);
 
     const fillTx = await this.sdk.fillSignedOrder(order, undefined, {
       gasLimit,
