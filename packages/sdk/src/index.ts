@@ -3,7 +3,7 @@ import { Web3Provider } from "@ethersproject/providers";
 
 import { Opensea } from "./marketplaces/Opensea";
 import { Trader } from "./marketplaces/Trader";
-import { SwapSdk } from "./swap";
+import { SwapSdk, throwSwapSdkUnsupportedChainError } from "./swap";
 
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
@@ -102,7 +102,7 @@ export class Gomu {
       });
     }
 
-    if (SwapSdk.supportedChainIds.includes(chainId)) {
+    if (SwapSdk.supportsChainId(chainId)) {
       this.swapSdk = new SwapSdk({
         ...swapSdkConfig,
         address,
@@ -220,16 +220,6 @@ export class Gomu {
     };
   }
 
-  throwSwapSdkUnsupportedChainError(): void {
-    throw new Error(
-      `Chain ID ${
-        this.chainId
-      } is not supported by swapSdk. Supported chain ids: ${JSON.stringify(
-        SwapSdk.supportedChainIds
-      )}`
-    );
-  }
-
   async makeSwapOrder({
     makerAssets,
     takerAssets,
@@ -238,7 +228,7 @@ export class Gomu {
     takerAssets: Asset[];
   }): Promise<SignedSwapOrder | void> {
     if (!this.swapSdk) {
-      return this.throwSwapSdkUnsupportedChainError();
+      return throwSwapSdkUnsupportedChainError(this.chainId);
     }
 
     return this.swapSdk.makeOrder({ makerAssets, takerAssets });
@@ -252,7 +242,7 @@ export class Gomu {
     gasLimit?: number;
   }): Promise<any | void> {
     if (!this.swapSdk) {
-      return this.throwSwapSdkUnsupportedChainError();
+      return throwSwapSdkUnsupportedChainError(this.chainId);
     }
 
     return this.swapSdk.takeOrder({ order, gasLimit });

@@ -19,6 +19,8 @@ export interface _SwapSdkConfig extends SwapSdkConfig {
   signer: Signer;
 }
 
+export const supportedChainIds = [1, 4];
+
 export class SwapSdk {
   private address: string;
   private sdk: NftSwapV3;
@@ -38,7 +40,9 @@ export class SwapSdk {
     }
   }
 
-  static supportedChainIds = [1, 4];
+  static supportsChainId(chainId: number): boolean {
+    return supportedChainIds.includes(chainId);
+  }
 
   async approveAssetsStatuses({
     assets,
@@ -116,3 +120,11 @@ export class SwapSdk {
     return fillTxReceipt;
   }
 }
+
+export const throwSwapSdkUnsupportedChainError = (chainId: number): void => {
+  throw new Error(
+    `Chain ID ${chainId} is not supported by swapSdk. Supported chain ids: ${JSON.stringify(
+      supportedChainIds
+    )}`
+  );
+};
