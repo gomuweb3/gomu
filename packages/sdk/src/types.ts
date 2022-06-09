@@ -2,8 +2,11 @@ import type {
   ContractReceipt,
   ContractTransaction,
 } from "@ethersproject/contracts";
+import type { SignedOrder } from "@traderxyz/nft-swap-sdk";
 import type { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 import type { Order as _OpenseaOrder } from "opensea-js/lib/types";
+
+export type SignedSwapOrder = SignedOrder;
 
 export interface Erc20Asset {
   contractAddress: string;
