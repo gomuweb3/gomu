@@ -162,16 +162,11 @@ export class Gomu {
           .filter(([_, marketplace]) => marketplace)
           .map(async ([marketplaceName, marketplace]) => {
             const orders = await marketplace.getOrders(params);
-            return orders.map((marketplaceOrder: any) => {
-              const normalizedOrder =
-                marketplace.getNormalizedOrder(marketplaceOrder);
-
-              return {
-                marketplaceName,
-                marketplaceOrder,
-                normalizedOrder,
-              };
-            });
+            return orders.map((marketplaceOrder: any) => ({
+              marketplaceName,
+              marketplaceOrder,
+              normalizedOrder: marketplace.getNormalizedOrder(marketplaceOrder),
+            }));
           })
       )
     ).flat();
