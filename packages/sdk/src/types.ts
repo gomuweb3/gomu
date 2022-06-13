@@ -5,6 +5,9 @@ import type {
 import type { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 import type { Order as _OpenseaOrder } from "opensea-js/lib/types";
 
+export type OpenseaOriginalOrder = _OpenseaOrder;
+export type TraderOriginalOrder = PostOrderResponsePayload;
+
 export interface Erc20Asset {
   contractAddress: string;
   type: "ERC20";
@@ -66,12 +69,28 @@ interface Trader {
   marketplaceName: MarketplaceName.Trader;
 }
 
+export interface NormalizedOrder {
+  id: string;
+  asset: {
+    contractAddress: string;
+    tokenId: string;
+    type: string;
+    amount: string;
+  };
+  erc20Asset: {
+    contractAddress: string;
+    amount: string;
+  };
+}
+
 export interface OpenseaOrder extends Opensea {
-  marketplaceOrder: _OpenseaOrder;
+  marketplaceOrder: OpenseaOriginalOrder;
+  normalizedOrder: NormalizedOrder;
 }
 
 export interface TraderOrder extends Trader {
-  marketplaceOrder: PostOrderResponsePayload;
+  marketplaceOrder: TraderOriginalOrder;
+  normalizedOrder: NormalizedOrder;
 }
 
 export type Order = OpenseaOrder | TraderOrder;

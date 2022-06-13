@@ -1,4 +1,8 @@
-import type { GetOrdersParams, MakeOrderParams } from "../types";
+import type {
+  GetOrdersParams,
+  MakeOrderParams,
+  NormalizedOrder,
+} from "../types";
 
 export interface Marketplace<Order> {
   makeOrder({
@@ -17,4 +21,6 @@ export interface Marketplace<Order> {
 
   takeOrder(order: Order): Promise<any>;
   cancelOrder(order: Order): Promise<any>;
+
+  getNormalizedOrder(order: Order): NormalizedOrder;
 }

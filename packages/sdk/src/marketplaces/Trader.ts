@@ -9,17 +9,20 @@ import {
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
 
-import type { Asset, GetOrdersParams, MakeOrderParams } from "../types";
+import type {
+  TraderOriginalOrder,
+  Asset,
+  GetOrdersParams,
+  MakeOrderParams,
+  NormalizedOrder,
+} from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
   ContractReceipt,
   ContractTransaction,
 } from "@ethersproject/contracts";
 import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
-import type {
-  PostOrderResponsePayload,
-  SearchOrdersParams,
-} from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
+import type { SearchOrdersParams } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 
 export interface TraderConfig {
   gasLimit?: number;
@@ -32,7 +35,7 @@ export interface _TraderConfig extends TraderConfig {
   signer: Signer;
 }
 
-export class Trader implements Marketplace<PostOrderResponsePayload> {
+export class Trader implements Marketplace<TraderOriginalOrder> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
   private readonly address: string;
@@ -60,7 +63,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<PostOrderResponsePayload> {
+  }: MakeOrderParams): Promise<TraderOriginalOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -95,7 +98,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<PostOrderResponsePayload[]> {
+  }: GetOrdersParams = {}): Promise<TraderOriginalOrder[]> {
     let filters: Partial<SearchOrdersParams> = {};
 
     if (makerAsset) {
@@ -118,7 +121,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     return resp.orders;
   }
 
-  async takeOrder(order: PostOrderResponsePayload): Promise<ContractReceipt> {
+  async takeOrder(order: TraderOriginalOrder): Promise<ContractReceipt> {
     const signedOrder = order.order;
 
     let takerAsset: SwappableAssetV4;
@@ -151,13 +154,27 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     return fillTx.wait();
   }
 
-  async cancelOrder(
-    order: PostOrderResponsePayload
-  ): Promise<ContractTransaction> {
+  async cancelOrder(order: TraderOriginalOrder): Promise<ContractTransaction> {
     return this.nftSwapSdk.cancelOrder(
       order.order.nonce,
       order.nftType as "ERC721" | "ERC1155"
     );
+  }
+
+  getNormalizedOrder(order: TraderOriginalOrder): NormalizedOrder {
+    return {
+      id: order.order.nonce,
+      asset: {
+        contractAddress: order.nftToken,
+        tokenId: order.nftTokenId,
+        type: order.nftType,
+        amount: order.nftTokenAmount,
+      },
+      erc20Asset: {
+        contractAddress: order.erc20Token,
+        amount: order.erc20TokenAmount,
+      },
+    };
   }
 
   private async approveAsset(asset: SwappableAssetV4): Promise<void> {

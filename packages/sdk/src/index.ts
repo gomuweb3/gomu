@@ -112,14 +112,19 @@ export class Gomu {
         })
         .map(async ([marketplaceName, marketplace]) => {
           try {
+            const marketplaceOrder = await marketplace.makeOrder(params);
+            const normalizedOrder =
+              marketplace.getNormalizedOrder(marketplaceOrder);
+
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              marketplaceOrder: await marketplace.makeOrder(params),
+              marketplaceOrder,
+              normalizedOrder,
             } as Order;
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : "" + err,
+              error: err instanceof Error ? err.message : String(err),
             };
           }
         })

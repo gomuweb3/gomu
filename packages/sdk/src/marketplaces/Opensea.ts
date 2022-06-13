@@ -12,16 +12,17 @@ import {
 } from "./validators";
 
 import type {
+  OpenseaOriginalOrder,
   Erc1155Asset,
   Erc20Asset,
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
+  NormalizedOrder,
 } from "../types";
 import type {
   Asset as _Asset,
   OpenSeaAPIConfig,
-  Order,
   OrderQuery,
 } from "opensea-js/lib/types";
 
@@ -34,7 +35,7 @@ export interface _OpenseaConfig extends OpenseaConfig {
   address: string;
 }
 
-export class Opensea implements Marketplace<Order> {
+export class Opensea implements Marketplace<OpenseaOriginalOrder> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
 
@@ -56,7 +57,7 @@ export class Opensea implements Marketplace<Order> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<Order> {
+  }: MakeOrderParams): Promise<OpenseaOriginalOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -69,7 +70,7 @@ export class Opensea implements Marketplace<Order> {
 
     let createOrder: (
       params: CreateBuyOrderParams | CreateSellOrderParams
-    ) => Promise<Order>;
+    ) => Promise<OpenseaOriginalOrder>;
     let baseAsset: Erc721Asset | Erc1155Asset;
     let quoteAsset: Erc20Asset;
 
@@ -125,7 +126,7 @@ export class Opensea implements Marketplace<Order> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<Order[]> {
+  }: GetOrdersParams = {}): Promise<OpenseaOriginalOrder[]> {
     const query: OrderQuery = {
       maker,
       sale_kind: SaleKind.FixedPrice,
@@ -184,18 +185,36 @@ export class Opensea implements Marketplace<Order> {
   }
   /* eslint-enable camelcase */
 
-  async takeOrder(order: Order): Promise<string> {
+  async takeOrder(order: OpenseaOriginalOrder): Promise<string> {
     return this.seaport.fulfillOrder({
       order,
       accountAddress: this.address,
     });
   }
 
-  async cancelOrder(order: Order): Promise<void> {
+  async cancelOrder(order: OpenseaOriginalOrder): Promise<void> {
     return this.seaport.cancelOrder({
       order,
       accountAddress: this.address,
     });
+  }
+
+  getNormalizedOrder(order: OpenseaOriginalOrder): NormalizedOrder {
+    const { hash, asset, quantity, paymentToken, basePrice } = order;
+
+    return {
+      id: hash!,
+      asset: {
+        contractAddress: asset!.tokenAddress,
+        tokenId: asset!.tokenId!,
+        type: asset!.assetContract.schemaName,
+        amount: new BigNumber(quantity).toString(),
+      },
+      erc20Asset: {
+        contractAddress: paymentToken,
+        amount: new BigNumber(basePrice).toString(),
+      },
+    };
   }
 
   private static getNetwork(chainId: number): Network {
@@ -226,7 +245,7 @@ interface CreateBuyOrderParams {
   quantity?: number;
   expirationTime?: number;
   paymentTokenAddress?: string;
-  sellOrder?: Order;
+  sellOrder?: OpenseaOriginalOrder;
   referrerAddress?: string;
 }
 
