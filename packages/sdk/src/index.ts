@@ -1,9 +1,14 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
+import {
+  LooksRare,
+  looksrareSupportedChainIds,
+} from "./marketplaces/LooksRare";
 import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
 import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
 
+import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
 import type {
@@ -29,6 +34,7 @@ export interface GomuConfig {
   provider: Web3Provider;
   openseaConfig?: OpenseaConfig;
   traderConfig?: TraderConfig;
+  looksrareConfig?: LooksRareConfig;
 }
 
 interface _GomuConfig extends GomuConfig {
@@ -40,12 +46,14 @@ interface _GomuConfig extends GomuConfig {
 interface Marketplaces {
   opensea?: Opensea;
   trader?: Trader;
+  looksrare?: LooksRare;
 }
 
 export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
   MarketplaceName,
   number[]
 > = {
+  looksrare: looksrareSupportedChainIds,
   opensea: openseaSupportedChainIds,
   trader: traderSupportedChainIds,
 };
@@ -57,6 +65,7 @@ export class Gomu {
     provider,
     openseaConfig = {},
     traderConfig = {},
+    looksrareConfig = {},
   }: GomuConfig): Promise<Gomu> {
     const signer = await provider.getSigner();
     const [address, chainId] = await Promise.all([
@@ -70,6 +79,7 @@ export class Gomu {
       signer,
       openseaConfig,
       traderConfig,
+      looksrareConfig,
     });
   }
 
@@ -80,6 +90,7 @@ export class Gomu {
     signer,
     openseaConfig,
     traderConfig,
+    looksrareConfig,
   }: _GomuConfig) {
     if (Opensea.supportsChainId(chainId)) {
       this.marketplaces.opensea = new Opensea({
@@ -95,6 +106,15 @@ export class Gomu {
       this.marketplaces.trader = new Trader({
         ...traderConfig,
         provider,
+        chainId,
+        address,
+        signer,
+      });
+    }
+
+    if (LooksRare.supportsChainId(chainId)) {
+      this.marketplaces.looksrare = new LooksRare({
+        ...looksrareConfig,
         chainId,
         address,
         signer,
@@ -127,7 +147,7 @@ export class Gomu {
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : String(err),
+              error: err instanceof Error ? err.message : `${err}`,
             };
           }
         })
