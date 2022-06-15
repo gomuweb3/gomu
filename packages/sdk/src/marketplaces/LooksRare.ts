@@ -91,9 +91,6 @@ export interface MakeOrderResult {
   s: string;
 }
 
-type MakeOrderResponse = ApiResponse<MakeOrderResult>;
-type GetOrderResponse = ApiResponse<MakeOrderResult[]>;
-
 interface FetchOrderParams {
   isOrderAsk?: boolean;
   collection?: string;
@@ -171,7 +168,7 @@ const SUPPORTED_CHAIN_ID = [
 ] as const;
 
 const DAY = 60 * 60 * 24;
-const DEFAULT_EXPIRATION = 30 * DAY; // Follow LooksRare's default
+const DEFAULT_EXPIRATION_TIMEOUT = 30 * DAY; // Follow LooksRare's default
 
 // Following LooksRare's default
 // Enforce a max slippage of 15% on all orders, if a collection change the fees to be >15%, the order will become invalid
@@ -228,12 +225,6 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     assertAssetsIsNotErc20AndErc20(makerAsset, takerAsset);
     assertAssetsIsNotErc721Erc1155AndErc721Erc115(makerAsset, takerAsset);
 
-    const now = Math.floor(Date.now() / 1000);
-    const expTime =
-      expirationTime && Math.round(expirationTime.getTime() / 1000);
-    const addresses = addressesByNetwork[this.chainId];
-    const signerAddress = this.address;
-
     let baseAsset: Erc721Asset | Erc1155Asset;
     let quoteAsset: Erc20Asset;
     let isOrderAsk: boolean; // True = Ask, false = Bid
@@ -256,20 +247,27 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       throw new Error("unsupported operation");
     }
 
+    const contractAddresses = addressesByNetwork[this.chainId];
+    const signerAddress = this.address;
+
     // The strategy is a validation contract that will be activated when matching maker and taker orders
     // See: https://github.com/LooksRare/contracts-exchange-v1/blob/59ccb75c939c1dcafebda8cecedbda442131f0af/contracts/LooksRareExchange.sol#L209
     const strategy = taker
-      ? addresses.STRATEGY_PRIVATE_SALE
-      : addresses.STRATEGY_STANDARD_SALE;
+      ? contractAddresses.STRATEGY_PRIVATE_SALE
+      : contractAddresses.STRATEGY_STANDARD_SALE;
 
     const params = taker ? [taker] : [];
     const nonce = await this.getNonce(signerAddress);
-
     // Re: private sale
     // Address params will be encoded into solidity address param type for private sale
     // https://github.com/LooksRare/looksrare-sdk/blob/eb2e61dba502f0d35c3c3c20236f6505ef730877/src/sign/generateMakerOrderTypedData.ts#L17
     // Contract will then extract it as targetBuyer
     // https://github.com/LooksRare/contracts-exchange-v1/blob/59ccb75c939c1dcafebda8cecedbda442131f0af/contracts/executionStrategies/StrategyPrivateSale.sol#L57
+
+    const now = Math.floor(Date.now() / 1000);
+    const expTime = expirationTime
+      ? Math.round(expirationTime.getTime() / 1000)
+      : now + DEFAULT_EXPIRATION_TIMEOUT;
 
     const makerOrder: MakerOrderPayload = {
       isOrderAsk,
@@ -282,7 +280,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       strategy,
       nonce,
       startTime: now.toString(),
-      endTime: (expTime ? now + expTime : now + DEFAULT_EXPIRATION).toString(),
+      endTime: expTime.toString(),
       minPercentageToAsk: DEFAULT_MIN_PERCENTAGE_TO_ASK,
       params,
     };
@@ -427,25 +425,17 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
    * Gets nonce from LooksRare API.
    */
   private async getNonce(address: string): Promise<string> {
-    return fetch(`${this.getApiUrl(ApiPath.orderNonce, { address })}`)
-      .then((res) => res.json())
-      .then(({ success, data, message }: ApiResponse<string>) => {
-        if (!success) {
-          throw new Error(message);
-        }
+    const res = await fetch(
+      `${this.getApiUrl(ApiPath.orderNonce, { address })}`
+    );
 
-        if (!data) {
-          throw new Error("missing data");
-        }
-
-        return data;
-      });
+    return this.parseApiResponse<string>(res);
   }
 
   /**
    * Posts make order to LooksRare API.
    */
-  private postOrder(payload: {
+  private async postOrder(payload: {
     signature: string;
     tokenId: string;
     collection: string;
@@ -461,52 +451,47 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     minPercentageToAsk: number;
     params: unknown[];
   }): Promise<MakeOrderResult> {
-    const apiKeyHeader: { "X-Looks-Api-Key": string } | {} = this.apiKey
-      ? {
-          "X-Looks-Api-Key": this.apiKey,
-        }
-      : {};
-
-    return fetch(this.getApiUrl(ApiPath.orders), {
+    const res = await fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        ...apiKeyHeader,
+        ...(this.apiKey && { "X-Looks-Api-Key": this.apiKey }),
       },
       body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then(({ success, data, message }: MakeOrderResponse) => {
-        if (!success) {
-          throw new Error(message);
-        }
+    });
 
-        if (!data) {
-          throw new Error("missing data");
-        }
-
-        return data;
-      });
+    return this.parseApiResponse<MakeOrderResult>(res);
   }
 
   /**
    * Fetches order from LooksRare API.
    */
-  private fetchOrders(params: FetchOrderParams): Promise<MakeOrderResult[]> {
-    return fetch(this.getApiUrl(ApiPath.orders, parseFetchParams(params)))
-      .then((res) => res.json())
-      .then(({ success, data, message }: GetOrderResponse) => {
-        if (!success) {
-          throw new Error(message);
-        }
+  private async fetchOrders(
+    params: FetchOrderParams
+  ): Promise<MakeOrderResult[]> {
+    const res = await fetch(
+      this.getApiUrl(ApiPath.orders, parseFetchParams(params))
+    );
 
-        if (!data) {
-          throw new Error("missing data");
-        }
+    return this.parseApiResponse<MakeOrderResult[]>(res);
+  }
 
-        return data;
-      });
+  /**
+   * Parses responses from LooksRare API.
+   */
+  private async parseApiResponse<T>(res: Response): Promise<T> {
+    const { success, data, message } = (await res.json()) as ApiResponse<T>;
+
+    if (!success) {
+      throw new Error(message);
+    }
+
+    if (!data) {
+      throw new Error("missing data");
+    }
+
+    return data;
   }
 
   /**
