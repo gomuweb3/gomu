@@ -10,9 +10,17 @@
  * https://github.com/LooksRare/looksrare-sdk/blob/eb2e61dba502f0d35c3c3c20236f6505ef730877/src/constants/addresses.ts
  */
 
-import fetch from "isomorphic-unfetch";
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract } from "@ethersproject/contracts";
+import {
+  signMakerOrder,
+  addressesByNetwork,
+  SupportedChainId,
+  MakerOrder as MakerOrderPayload,
+  TakerOrder as TakerOrderPayload,
+  LooksRareExchangeAbi,
+} from "@looksrare/sdk";
+import fetch from "isomorphic-unfetch";
 
 import { Marketplace } from "./Marketplace";
 import {
@@ -30,15 +38,6 @@ import type {
   MakeOrderParams,
 } from "../types";
 
-import {
-  signMakerOrder,
-  addressesByNetwork,
-  SupportedChainId,
-  MakerOrder as MakerOrderPayload,
-  TakerOrder as TakerOrderPayload,
-  LooksRareExchangeAbi,
-} from "@looksrare/sdk";
-
 export interface LooksRareConfig {
   apiKey?: string;
 }
@@ -52,7 +51,7 @@ interface _LooksRareConfig extends LooksRareConfig {
 interface ApiResponse<T> {
   success: boolean;
   name?: string;
-  message?: string; // used for errors
+  message?: string; // Used for errors
   data?: T;
   errors: {
     target: Record<string, unknown>;
@@ -237,7 +236,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
 
     let baseAsset: Erc721Asset | Erc1155Asset;
     let quoteAsset: Erc20Asset;
-    let isOrderAsk: boolean; // true = Ask, false = Bid
+    let isOrderAsk: boolean; // True = Ask, false = Bid
 
     if (
       (makerAsset.type === "ERC721" || makerAsset.type === "ERC1155") &&
@@ -264,7 +263,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       : addresses.STRATEGY_STANDARD_SALE;
 
     const params = taker ? [taker] : [];
-    const nonce = await this._getNonce(signerAddress);
+    const nonce = await this.getNonce(signerAddress);
 
     // Re: private sale
     // Address params will be encoded into solidity address param type for private sale
@@ -296,7 +295,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     );
 
     /* @ts-ignore */
-    return this._postOrder({ ...makerOrder, signature });
+    return this.postOrder({ ...makerOrder, signature });
   }
 
   /**
@@ -325,11 +324,11 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     };
 
     return takerOrder.isOrderAsk
-      ? this._getExchangeContract().matchBidWithTakerAsk(
+      ? this.getExchangeContract().matchBidWithTakerAsk(
           parsedTakerOrder,
           parsedMakerOrder
         )
-      : this._getExchangeContract().matchAskWithTakerBid(
+      : this.getExchangeContract().matchAskWithTakerBid(
           parsedTakerOrder,
           parsedMakerOrder
         );
@@ -354,7 +353,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     if (!makerAsset && !takerAsset) {
       const signerObj = maker ? { signer: maker } : {};
 
-      return this._fetchOrders({
+      return this.fetchOrders({
         sort,
         status,
         ...signerObj,
@@ -403,7 +402,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       query.price = { min: quoteAssetPrice, max: quoteAssetPrice };
     }
 
-    const result = await this._fetchOrders(query);
+    const result = await this.fetchOrders(query);
 
     return result;
   }
@@ -412,13 +411,13 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
    * Cancels order on LooksRare exchange contract.
    */
   async cancelOrder(order: MakeOrderResult): Promise<ContractReceipt> {
-    return this._getExchangeContract().cancelMultipleMakerOrders([order.nonce]);
+    return this.getExchangeContract().cancelMultipleMakerOrders([order.nonce]);
   }
 
   /**
    * Gets looksrare exchange contract instance.
    */
-  private _getExchangeContract(): Contract {
+  private getExchangeContract(): Contract {
     const exchangeAddress = addressesByNetwork[this.chainId].EXCHANGE;
 
     return new Contract(exchangeAddress, LooksRareExchangeAbi, this.signer);
@@ -427,8 +426,8 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
   /**
    * Gets nonce from LooksRare API.
    */
-  private async _getNonce(address: string) {
-    return fetch(`${this._getApiUrl(ApiPath.orderNonce, { address })}`)
+  private async getNonce(address: string): Promise<string> {
+    return fetch(`${this.getApiUrl(ApiPath.orderNonce, { address })}`)
       .then((res) => res.json())
       .then(({ success, data, message }: ApiResponse<string>) => {
         if (!success) {
@@ -446,7 +445,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
   /**
    * Posts make order to LooksRare API.
    */
-  private _postOrder(payload: {
+  private postOrder(payload: {
     signature: string;
     tokenId: string;
     collection: string;
@@ -468,7 +467,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
         }
       : {};
 
-    return fetch(this._getApiUrl(ApiPath.orders), {
+    return fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -494,8 +493,8 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
   /**
    * Fetches order from LooksRare API.
    */
-  private _fetchOrders(params: FetchOrderParams): Promise<MakeOrderResult[]> {
-    return fetch(this._getApiUrl(ApiPath.orders, parseFetchParams(params)))
+  private fetchOrders(params: FetchOrderParams): Promise<MakeOrderResult[]> {
+    return fetch(this.getApiUrl(ApiPath.orders, parseFetchParams(params)))
       .then((res) => res.json())
       .then(({ success, data, message }: GetOrderResponse) => {
         if (!success) {
@@ -513,22 +512,22 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
   /**
    * Gets LooksRare API origin.
    */
-  private _getApiUrl(
+  private getApiUrl(
     path: ApiPath,
     queryParams?: Record<string, string> | [string, string][]
-  ) {
+  ): string {
     const params = queryParams
-      ? "?" + new URLSearchParams(queryParams).toString()
+      ? `?${new URLSearchParams(queryParams).toString()}`
       : "";
 
-    return API_ORIGIN[this.chainId] + path + params;
+    return `${API_ORIGIN[this.chainId]}${path}${params}`;
   }
 }
 
 /**
  * Parses fetch params into 2D array format of [ [ key1, value1 ], [ key2, value2 ], ... ].
  */
-function parseFetchParams(params: FetchOrderParams) {
+function parseFetchParams(params: FetchOrderParams): [string, string][] {
   const paramsArr: [string, string][] = [];
 
   Object.entries(params).forEach(([key, value]) => {
@@ -540,7 +539,7 @@ function parseFetchParams(params: FetchOrderParams) {
       return paramsArr.push(...flattenFetchParamObj(key, value));
     }
 
-    paramsArr.push([key, value + ""]);
+    paramsArr.push([key, `${value}`]);
   });
 
   return paramsArr;
@@ -549,25 +548,23 @@ function parseFetchParams(params: FetchOrderParams) {
 /**
  * Flattens array named `A` with values of `[value1, value2]` into `[ [ 'A[]',  value1 ], [ 'A[]', value2 ] ]`.
  */
-function flattenFetchParamArr(key: string, values: unknown[]) {
-  const flattened: [string, string][] = [];
-
-  for (const val of values) {
-    flattened.push([key + "[]", val + ""]);
-  }
-
-  return flattened;
+function flattenFetchParamArr(
+  key: string,
+  values: unknown[]
+): [string, string][] {
+  return values.map((val) => {
+    return [`${key}[]`, `${val}`];
+  });
 }
 
 /**
  * Flattens object named `A` with value of `{ key: value }` into `[ 'A[key]', value ]`.
  */
-function flattenFetchParamObj(objName: string, objValue: object) {
-  const flattened: [string, string][] = [];
-
-  for (const [key, value] of Object.entries(objValue)) {
-    flattened.push([`${objName}[${key}]`, value]);
-  }
-
-  return flattened;
+function flattenFetchParamObj(
+  objName: string,
+  objValue: object
+): [string, string][] {
+  return Object.entries(objValue).map(([key, value]) => {
+    return [`${objName}[${key}]`, value];
+  });
 }

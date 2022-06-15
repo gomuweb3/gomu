@@ -1,13 +1,13 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
+import { LooksRare } from "./marketplaces/LooksRare";
 import { Opensea } from "./marketplaces/Opensea";
 import { Trader } from "./marketplaces/Trader";
-import { LooksRare } from "./marketplaces/LooksRare";
 
+import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
-import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type {
   Asset,
   CancelOrderResponse,
@@ -135,7 +135,7 @@ export class Gomu {
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : "" + err,
+              error: err instanceof Error ? err.message : `${err}`,
             };
           }
         })

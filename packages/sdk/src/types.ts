@@ -1,13 +1,13 @@
 import type {
+  MakeOrderResult as _LooksRareOrder,
+  ContractReceipt as _LooksRareContractReceipt,
+} from "./marketplaces/LooksRare";
+import type {
   ContractReceipt,
   ContractTransaction,
 } from "@ethersproject/contracts";
 import type { PostOrderResponsePayload } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 import type { Order as _OpenseaOrder } from "opensea-js/lib/types";
-import type {
-  MakeOrderResult as _LooksRareOrder,
-  ContractReceipt as _LooksRareContractReceipt,
-} from "./marketplaces/LooksRare";
 
 export interface Erc20Asset {
   contractAddress: string;
