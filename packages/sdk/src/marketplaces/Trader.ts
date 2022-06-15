@@ -32,18 +32,9 @@ export interface _TraderConfig extends TraderConfig {
   signer: Signer;
 }
 
-export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4).reduce(
-  (acc, key) => {
-    const num = Number(key);
-
-    if (Number.isInteger(num)) {
-      acc.push(num);
-    }
-
-    return acc;
-  },
-  [] as number[]
-);
+export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
+  .filter((key) => Number.isInteger(Number(key)))
+  .map(Number);
 
 export class Trader implements Marketplace<PostOrderResponsePayload> {
   private readonly nftSwapSdk: NftSwapV4;

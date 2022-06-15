@@ -42,7 +42,10 @@ interface Marketplaces {
   trader?: Trader;
 }
 
-export const SUPPORTED_CHAIN_IDS_MAPPING: Record<MarketplaceName, number[]> = {
+export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
+  MarketplaceName,
+  number[]
+> = {
   opensea: openseaSupportedChainIds,
   trader: traderSupportedChainIds,
 };
@@ -124,7 +127,7 @@ export class Gomu {
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : "" + err,
+              error: err instanceof Error ? err.message : String(err),
             };
           }
         })
