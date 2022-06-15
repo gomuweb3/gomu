@@ -34,6 +34,8 @@ export interface _OpenseaConfig extends OpenseaConfig {
   address: string;
 }
 
+export const openseaSupportedChainIds = [1, 4];
+
 export class Opensea implements Marketplace<Order> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
@@ -48,7 +50,7 @@ export class Opensea implements Marketplace<Order> {
   }
 
   static supportsChainId(chainId: number): boolean {
-    return [1, 4].includes(chainId);
+    return openseaSupportedChainIds.includes(chainId);
   }
 
   async makeOrder({

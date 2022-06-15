@@ -1,8 +1,8 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
-import { Opensea } from "./marketplaces/Opensea";
-import { Trader } from "./marketplaces/Trader";
+import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
+import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
 
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
@@ -41,6 +41,11 @@ interface Marketplaces {
   opensea?: Opensea;
   trader?: Trader;
 }
+
+export const SUPPORTED_CHAIN_IDS_MAPPING: Record<MarketplaceName, number[]> = {
+  opensea: openseaSupportedChainIds,
+  trader: traderSupportedChainIds,
+};
 
 export class Gomu {
   readonly marketplaces: Marketplaces = {};

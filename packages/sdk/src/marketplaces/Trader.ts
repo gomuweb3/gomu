@@ -1,6 +1,6 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { BaseProvider } from "@ethersproject/providers";
-import { NftSwapV4 } from "@traderxyz/nft-swap-sdk";
+import { NftSwapV4, SupportedChainIdsV4 } from "@traderxyz/nft-swap-sdk";
 
 import {
   assertAssetsIsNotBundled,
@@ -32,6 +32,19 @@ export interface _TraderConfig extends TraderConfig {
   signer: Signer;
 }
 
+export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4).reduce(
+  (acc, key) => {
+    const num = Number(key);
+
+    if (Number.isInteger(num)) {
+      acc.push(num);
+    }
+
+    return acc;
+  },
+  [] as number[]
+);
+
 export class Trader implements Marketplace<PostOrderResponsePayload> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
@@ -52,7 +65,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
   }
 
   static supportsChainId(chainId: number): boolean {
-    return [1, 3].includes(chainId);
+    return traderSupportedChainIds.includes(chainId);
   }
 
   async makeOrder({
