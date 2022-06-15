@@ -13,7 +13,7 @@
     "directory": "packages/sdk"
   },
   "scripts": {
-    "build": "yarn run -T build",
+    "build": "yarn run -T build --resolveJsonModule",
     "lint": "yarn run -T lint",
     "prepack": "yarn run -T prepack"
   },
