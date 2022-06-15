@@ -162,11 +162,6 @@ enum ApiPath {
   orderNonce = "/api/v1/orders/nonce",
 }
 
-const SUPPORTED_CHAIN_ID = [
-  SupportedChainId.MAINNET,
-  SupportedChainId.RINKEBY,
-] as const;
-
 const DAY = 60 * 60 * 24;
 const DEFAULT_EXPIRATION_TIMEOUT = 30 * DAY; // Follow LooksRare's default
 
@@ -175,6 +170,11 @@ const DEFAULT_EXPIRATION_TIMEOUT = 30 * DAY; // Follow LooksRare's default
 const DEFAULT_MIN_PERCENTAGE_TO_ASK = 8500;
 
 const DEFAULT_PARAMS_HEX = "0x";
+
+export const looksrareSupportedChainIds = [
+  SupportedChainId.MAINNET,
+  SupportedChainId.RINKEBY,
+];
 
 export class LooksRare implements Marketplace<MakeOrderResult> {
   private readonly apiKey: string | undefined;
@@ -194,7 +194,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
   }
 
   static supportsChainId(chainId: number): boolean {
-    return SUPPORTED_CHAIN_ID.includes(chainId);
+    return looksrareSupportedChainIds.includes(chainId);
   }
 
   /**

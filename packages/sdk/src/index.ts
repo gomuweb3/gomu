@@ -1,9 +1,12 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
-import { LooksRare } from "./marketplaces/LooksRare";
-import { Opensea } from "./marketplaces/Opensea";
-import { Trader } from "./marketplaces/Trader";
+import {
+  LooksRare,
+  looksrareSupportedChainIds,
+} from "./marketplaces/LooksRare";
+import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
+import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
 
 import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
@@ -45,6 +48,15 @@ interface Marketplaces {
   trader?: Trader;
   looksrare?: LooksRare;
 }
+
+export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
+  MarketplaceName,
+  number[]
+> = {
+  looksrare: looksrareSupportedChainIds,
+  opensea: openseaSupportedChainIds,
+  trader: traderSupportedChainIds,
+};
 
 export class Gomu {
   readonly marketplaces: Marketplaces = {};
