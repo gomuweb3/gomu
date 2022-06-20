@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import { Network, OpenSeaPort, WyvernProtocol } from "opensea-js";
-import { OrderSide, SaleKind, WyvernSchemaName } from "opensea-js/lib/types";
+import { WyvernSchemaName } from "opensea-js/lib/types";
 import Web3 from "web3";
 
 import { Marketplace } from "./Marketplace";
@@ -19,11 +19,12 @@ import type {
   MakeOrderParams,
 } from "../types";
 import type {
-  Asset as _Asset,
-  OpenSeaAPIConfig,
-  Order,
-  OrderQuery,
-} from "opensea-js/lib/types";
+  OrderV2 as Order,
+  OrdersQueryOptions,
+  OrderSide,
+} from "opensea-js/lib/orders/types";
+import type { Asset as _Asset, OpenSeaAPIConfig } from "opensea-js/lib/types";
+import type { BigNumberInput } from "opensea-js/lib/utils/utils";
 
 export interface OpenseaConfig
   extends Exclude<OpenSeaAPIConfig, "networkName"> {}
@@ -121,28 +122,28 @@ export class Opensea implements Marketplace<Order> {
     return createOrder(params);
   }
 
-  /* eslint-disable camelcase */
   async getOrders({
     makerAsset,
     maker,
     takerAsset,
     taker,
   }: GetOrdersParams = {}): Promise<Order[]> {
-    const query: OrderQuery = {
+    const query: Omit<OrdersQueryOptions, "limit"> = {
+      // https://github.com/ProjectOpenSea/opensea-js/blob/master/src/api.ts#L106 limit is currently omitted here
+      protocol: "seaport",
       maker,
-      sale_kind: SaleKind.FixedPrice,
       taker,
+      side: ORDER_SIDE_SELL,
     };
 
     if (!makerAsset && !takerAsset) {
       // Query in sequence instead of Promise.all to avoid getting rate limited.
       const buyOrdersResp = await this.seaport.api.getOrders({
         ...query,
-        side: OrderSide.Buy,
+        side: ORDER_SIDE_BUY,
       });
       const sellOrdersResp = await this.seaport.api.getOrders({
         ...query,
-        side: OrderSide.Sell,
       });
       return [...buyOrdersResp.orders, ...sellOrdersResp.orders];
     }
@@ -156,7 +157,6 @@ export class Opensea implements Marketplace<Order> {
       (makerAsset.type === "ERC721" || makerAsset.type === "ERC1155") &&
       (!takerAsset || takerAsset.type === "ERC20")
     ) {
-      query.side = OrderSide.Sell;
       baseAsset = makerAsset;
       quoteAsset = takerAsset;
     } else if (
@@ -164,7 +164,7 @@ export class Opensea implements Marketplace<Order> {
       takerAsset &&
       (takerAsset.type === "ERC721" || takerAsset.type === "ERC1155")
     ) {
-      query.side = OrderSide.Buy;
+      query.side = ORDER_SIDE_BUY;
       baseAsset = takerAsset;
       quoteAsset = makerAsset;
     } else {
@@ -173,12 +173,12 @@ export class Opensea implements Marketplace<Order> {
 
     if (baseAsset) {
       const { contractAddress, tokenId } = baseAsset;
-      query.asset_contract_address = contractAddress;
-      query.token_id = tokenId;
+      query.assetContractAddress = contractAddress;
+      query.tokenIds = [tokenId];
     }
 
     if (quoteAsset) {
-      query.payment_token_address = quoteAsset.contractAddress;
+      query.paymentTokenAddress = quoteAsset.contractAddress;
     }
 
     const resp = await this.seaport.api.getOrders(query);
@@ -221,29 +221,27 @@ function toUnitAmount(amount: bigint, decimals?: number): number {
     : Number(amount);
 }
 
+const ORDER_SIDE_BUY: OrderSide = "bid";
+
+const ORDER_SIDE_SELL: OrderSide = "ask";
+
 interface CreateBuyOrderParams {
   asset: _Asset;
   accountAddress: string;
-  startAmount: number;
-  quantity?: number;
-  expirationTime?: number;
+  startAmount: BigNumberInput;
+  quantity?: BigNumberInput;
+  expirationTime?: BigNumberInput;
   paymentTokenAddress?: string;
-  sellOrder?: Order;
-  referrerAddress?: string;
 }
 
 interface CreateSellOrderParams {
   asset: _Asset;
   accountAddress: string;
-  startAmount: number;
-  endAmount?: number;
-  quantity?: number;
-  listingTime?: number;
-  expirationTime?: number;
-  waitForHighestBid?: boolean;
-  englishAuctionReservePrice?: number;
+  startAmount: BigNumberInput;
+  endAmount?: BigNumberInput;
+  quantity?: BigNumberInput;
+  listingTime?: string;
+  expirationTime?: BigNumberInput;
   paymentTokenAddress?: string;
-  extraBountyBasisPoints?: number;
   buyerAddress?: string;
-  buyerEmail?: string;
 }
