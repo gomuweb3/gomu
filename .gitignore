@@ -13,6 +13,7 @@
 
 .DS_Store
 **/.idea
+**/node_modules
 
 # Ignore built ts files
 packages/**/lib/**/*

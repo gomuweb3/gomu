@@ -13,9 +13,9 @@
     "directory": "packages/sdk"
   },
   "scripts": {
-    "build": "yarn run -T build --resolveJsonModule",
-    "lint": "yarn run -T lint",
-    "prepack": "yarn run -T prepack"
+    "build": "yarn --cwd ../.. run build",
+    "lint": "yarn --cwd ../.. run lint",
+    "prepack": "yarn --cwd ../.. run prepack"
   },
   "dependencies": {
     "@ethersproject/abstract-signer": "^5.6.1",
@@ -32,5 +32,5 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "packageManager": "yarn@3.2.0"
+  "packageManager": "yarn@1.22.19"
 }

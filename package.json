@@ -1,12 +1,12 @@
 {
   "name": "gomu",
-  "packageManager": "yarn@3.2.0",
+  "packageManager": "yarn@1.22.19",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "cd $INIT_CWD && rimraf dist && tsc",
+    "build": "cd $INIT_CWD && rimraf lib && tsc",
     "lint": "cd $INIT_CWD && eslint src --ext .ts --fix",
     "prepack": "cd $INIT_CWD && $npm_execpath run build"
   },
