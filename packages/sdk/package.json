@@ -13,10 +13,9 @@
     "directory": "packages/sdk"
   },
   "scripts": {
-    "build": "yarn --cwd ../.. run build --resolveJsonModule",
+    "build": "yarn --cwd ../.. run build",
     "lint": "yarn --cwd ../.. run lint",
-    "prepack": "yarn --cwd ../.. run prepack",
-    "test": "yarn --cwd ../.. run test --selectProjects @gomuweb3/sdk"
+    "prepack": "yarn --cwd ../.. run prepack"
   },
   "dependencies": {
     "@ethersproject/abstract-signer": "^5.6.1",
