@@ -62,7 +62,7 @@ interface ApiResponse<T> {
   }[];
 }
 
-enum Status {
+export enum Status {
   VALID = "VALID",
   CANCELLED = "CANCELLED",
   EXECUTED = "EXECUTED",
@@ -348,21 +348,15 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       return [];
     }
 
-    if (!makerAsset && !takerAsset) {
-      const signerObj = maker ? { signer: maker } : {};
-
-      return this.fetchOrders({
-        sort,
-        status,
-        ...signerObj,
-      });
-    }
-
     const query: FetchOrderParams = {
-      isOrderAsk: true,
       sort,
       status,
+      ...(maker && { signer: maker }),
     };
+
+    if (!makerAsset && !takerAsset) {
+      return this.fetchOrders(query);
+    }
 
     let baseAsset: Erc721Asset | Erc1155Asset | undefined;
     let quoteAsset: Erc20Asset | undefined;

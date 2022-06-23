@@ -29,4 +29,14 @@ module.exports = {
     "no-unused-vars": "off",
     "prefer-template": "error",
   },
+  overrides: [
+    {
+      files: ["**/*.test.ts"],
+      plugins: ["jest"],
+      extends: ["plugin:jest/recommended"],
+      rules: {
+        "max-nested-callbacks": 0,
+      },
+    },
+  ],
 };
