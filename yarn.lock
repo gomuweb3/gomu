@@ -4134,7 +4134,7 @@ once@^1.3.0, once@^1.3.1, once@^1.4.0:
   dependencies:
     wrappy "1"
 
-opensea-js@^4.0.2:
+opensea-js@4.0.3:
   version "4.0.3"
   resolved "https://registry.yarnpkg.com/opensea-js/-/opensea-js-4.0.3.tgz#a93bbdeab4e3491854c5b74a10481b4d84e7fb1f"
   integrity sha512-kLY8wwbbPOu/FGS/0AdpNiWZCSZo6Megh0ku3omJVU1KABGDT6I6ggFbhg7DNbyUubfD/0V0dtrwCDrf6YGGsw==
