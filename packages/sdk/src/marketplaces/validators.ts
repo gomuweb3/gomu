@@ -1,12 +1,17 @@
 import type { Asset } from "../types";
 
-export function assertAssetsIsNotEmpty(assets: Asset[], prefix: string): void {
+export function assertAssetsIsNotEmpty(
+  assets: Asset[],
+  prefix: string
+): asserts assets is [Asset, ...Asset[]] {
   if (!assets || assets.length === 0) {
     throw new Error(`${prefix} assets cannot be empty`);
   }
 }
 
-export function assertAssetsIsNotBundled(assets: Asset[]): void {
+export function assertAssetsIsNotBundled(
+  assets: Asset[]
+): asserts assets is [Asset] {
   if (assets.length > 1) {
     throw new Error("bundled assets are not supported");
   }
@@ -29,6 +34,6 @@ export function assertAssetsIsNotErc721Erc1155AndErc721Erc115(
     (makerAsset.type === "ERC721" || makerAsset.type === "ERC1155") &&
     (takerAsset.type === "ERC721" || takerAsset.type === "ERC1155")
   ) {
-    throw new Error("ERC712/ERC1155 <-> ERC712/ERC1155 is not supported");
+    throw new Error("ERC721/ERC1155 <-> ERC721/ERC1155 is not supported");
   }
 }
