@@ -1,12 +1,12 @@
 import type { GetOrdersParams, MakeOrderParams } from "../types";
 
-export interface Marketplace<Order> {
+export interface Marketplace<OrderData> {
   makeOrder({
     makerAssets,
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<Order>;
+  }: MakeOrderParams): Promise<OrderData>;
 
   getOrders({
     makerAsset,
@@ -15,6 +15,6 @@ export interface Marketplace<Order> {
     taker,
   }: GetOrdersParams): Promise<any>;
 
-  takeOrder(order: Order): Promise<any>;
-  cancelOrder(order: Order): Promise<any>;
+  takeOrder(order: OrderData): Promise<any>;
+  cancelOrder(order: OrderData): Promise<any>;
 }

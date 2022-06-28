@@ -17,13 +17,19 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
+  NormalizedAsset,
+  OpenseaOrderData,
 } from "../types";
 import type {
-  OrderV2 as Order,
+  OrderV2 as OpenseaOriginalOrder,
   OrdersQueryOptions,
   OrderSide,
 } from "opensea-js/lib/orders/types";
-import type { Asset as _Asset, OpenSeaAPIConfig } from "opensea-js/lib/types";
+import type {
+  Asset as _Asset,
+  OpenSeaAPIConfig,
+  OpenSeaAsset,
+} from "opensea-js/lib/types";
 import type { BigNumberInput } from "opensea-js/lib/utils/utils";
 
 export interface OpenseaConfig
@@ -37,7 +43,7 @@ export interface _OpenseaConfig extends OpenseaConfig {
 
 export const openseaSupportedChainIds = [1, 4];
 
-export class Opensea implements Marketplace<Order> {
+export class Opensea implements Marketplace<OpenseaOrderData> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
 
@@ -59,7 +65,7 @@ export class Opensea implements Marketplace<Order> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<Order> {
+  }: MakeOrderParams): Promise<OpenseaOrderData> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -72,7 +78,7 @@ export class Opensea implements Marketplace<Order> {
 
     let createOrder: (
       params: CreateBuyOrderParams | CreateSellOrderParams
-    ) => Promise<Order>;
+    ) => Promise<OpenseaOriginalOrder>;
     let baseAsset: Erc721Asset | Erc1155Asset;
     let quoteAsset: Erc20Asset;
 
@@ -119,7 +125,9 @@ export class Opensea implements Marketplace<Order> {
       params.expirationTime = Math.round(expirationTime.getTime() / 1000);
     }
 
-    return createOrder(params);
+    const order = await createOrder(params);
+
+    return normalizeOrder(order);
   }
 
   async getOrders({
@@ -127,7 +135,7 @@ export class Opensea implements Marketplace<Order> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<Order[]> {
+  }: GetOrdersParams = {}): Promise<OpenseaOrderData[]> {
     const query: Omit<OrdersQueryOptions, "limit"> = {
       // https://github.com/ProjectOpenSea/opensea-js/blob/master/src/api.ts#L106 limit is currently omitted here
       protocol: "seaport",
@@ -145,7 +153,9 @@ export class Opensea implements Marketplace<Order> {
       const sellOrdersResp = await this.seaport.api.getOrders({
         ...query,
       });
-      return [...buyOrdersResp.orders, ...sellOrdersResp.orders];
+      return [...buyOrdersResp.orders, ...sellOrdersResp.orders].map(
+        normalizeOrder
+      );
     }
 
     let baseAsset: Erc721Asset | Erc1155Asset | undefined;
@@ -182,20 +192,20 @@ export class Opensea implements Marketplace<Order> {
     }
 
     const resp = await this.seaport.api.getOrders(query);
-    return resp.orders;
+    return resp.orders.map(normalizeOrder);
   }
   /* eslint-enable camelcase */
 
-  async takeOrder(order: Order): Promise<string> {
+  async takeOrder(orderData: OpenseaOrderData): Promise<string> {
     return this.seaport.fulfillOrder({
-      order,
+      order: orderData.originalOrder,
       accountAddress: this.address,
     });
   }
 
-  async cancelOrder(order: Order): Promise<void> {
+  async cancelOrder(orderData: OpenseaOrderData): Promise<void> {
     return this.seaport.cancelOrder({
-      order,
+      order: orderData.originalOrder,
       accountAddress: this.address,
     });
   }
@@ -219,6 +229,27 @@ function toUnitAmount(amount: bigint, decimals?: number): number {
         decimals
       ).toNumber()
     : Number(amount);
+}
+
+function normalizeAssets(assets: OpenSeaAsset[]): NormalizedAsset[] {
+  return assets.map((asset) => {
+    return {
+      contractAddress: asset.assetContract.address,
+      tokenId: asset.tokenId!,
+      type: asset.assetContract.schemaName,
+      amount: "1",
+    };
+  });
+}
+
+function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrderData {
+  return {
+    id: order.orderHash!,
+    makerAssets: normalizeAssets(order.makerAssetBundle.assets),
+    takerAssets: normalizeAssets(order.takerAssetBundle.assets),
+    isSellOrder: order.side === ORDER_SIDE_SELL,
+    originalOrder: order,
+  };
 }
 
 const ORDER_SIDE_BUY: OrderSide = "bid";

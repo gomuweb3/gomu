@@ -24,7 +24,6 @@ import type {
   MakeBuyOrderParams,
   MarketplaceName,
   Order,
-  MakeOrderResponse,
   TakeOrderResponse,
 } from "./types";
 
@@ -125,7 +124,7 @@ export class Gomu {
   async makeOrder({
     marketplaces,
     ...params
-  }: MakeOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeOrderParams): Promise<Order[]> {
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([marketplaceName, marketplace]) => {
@@ -158,7 +157,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeSellOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeSellOrderParams): Promise<Order[]> {
     return this.makeOrder({
       makerAssets: assets,
       takerAssets: [{ contractAddress, amount, type: "ERC20" }],
@@ -170,7 +169,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeBuyOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeBuyOrderParams): Promise<Order[]> {
     return this.makeOrder({
       makerAssets: [{ contractAddress, amount, type: "ERC20" }],
       takerAssets: assets,
