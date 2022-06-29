@@ -146,7 +146,9 @@ export class Gomu {
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : `${err}`,
+              error: {
+                message: err instanceof Error ? err.message : `${err}`,
+              },
             };
           }
         })

@@ -63,8 +63,12 @@ export enum MarketplaceName {
   LooksRare = "looksrare",
 }
 
+interface ErrorObj {
+  message?: string;
+}
+
 interface ErrorBase {
-  error?: string;
+  error?: ErrorObj;
 }
 
 interface OpenseaBase extends ErrorBase {
