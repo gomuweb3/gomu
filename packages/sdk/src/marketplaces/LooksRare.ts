@@ -64,7 +64,7 @@ interface ApiResponse<T> {
   }[];
 }
 
-enum Status {
+export enum Status {
   VALID = "VALID",
   CANCELLED = "CANCELLED",
   EXECUTED = "EXECUTED",
@@ -353,23 +353,17 @@ export class LooksRare implements Marketplace<LooksRareOrderData> {
       return [];
     }
 
-    if (!makerAsset && !takerAsset) {
-      const signerObj = maker ? { signer: maker } : {};
+    const query: FetchOrderParams = {
+      sort,
+      status,
+      ...(maker && { signer: maker }),
+    };
 
-      const orders = await this.fetchOrders({
-        sort,
-        status,
-        ...signerObj,
-      });
+    if (!makerAsset && !takerAsset) {
+      const orders = await this.fetchOrders(query);
 
       return orders.map(normalizeOrder);
     }
-
-    const query: FetchOrderParams = {
-      isOrderAsk: true,
-      sort,
-      status,
-    };
 
     let baseAsset: Erc721Asset | Erc1155Asset | undefined;
     let quoteAsset: Erc20Asset | undefined;
@@ -563,7 +557,9 @@ function flattenFetchParamObj(
   });
 }
 
-function normalizeOrder(order: LooksRareOriginalOrder): LooksRareOrderData {
+export function normalizeOrder(
+  order: LooksRareOriginalOrder
+): LooksRareOrderData {
   const isSellOrder = order.isOrderAsk;
   const nftAsset = {
     contractAddress: order.collectionAddress,
