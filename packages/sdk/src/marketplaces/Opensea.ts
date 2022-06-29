@@ -242,12 +242,28 @@ function normalizeAssets(assets: OpenSeaAsset[]): NormalizedAsset[] {
   });
 }
 
+// Opensea OrderV2 contains price on root level, but payment token info in either maker or taker bundle
+// for now we are working only with orders that use single erc20 payment token
 function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrderData {
+  const isSellOrder = order.side === ORDER_SIDE_SELL;
+  const erc20Asset = {
+    contractAddress: (isSellOrder
+      ? order.takerAssetBundle
+      : order.makerAssetBundle
+    ).assets[0].assetContract.address,
+    type: "ERC20",
+    amount: new BigNumber(order.currentPrice).toString(),
+  };
+
   return {
     id: order.orderHash!,
-    makerAssets: normalizeAssets(order.makerAssetBundle.assets),
-    takerAssets: normalizeAssets(order.takerAssetBundle.assets),
-    isSellOrder: order.side === ORDER_SIDE_SELL,
+    makerAssets: isSellOrder
+      ? normalizeAssets(order.makerAssetBundle.assets)
+      : [erc20Asset],
+    takerAssets: isSellOrder
+      ? [erc20Asset]
+      : normalizeAssets(order.takerAssetBundle.assets),
+    isSellOrder,
     originalOrder: order,
   };
 }

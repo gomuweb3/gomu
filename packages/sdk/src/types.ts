@@ -1,5 +1,5 @@
 import type {
-  MakeOrderResult as LooksRareOriginalOrder,
+  LooksRareOriginalOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
 import type {
@@ -82,7 +82,7 @@ interface LooksRareBase extends ErrorBase {
 export interface NormalizedAsset {
   contractAddress: string;
   tokenId?: string;
-  type: string;
+  type?: string;
   amount: string;
 }
 

@@ -141,8 +141,8 @@ export class Gomu {
           try {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              marketplaceOrder: await marketplace.makeOrder(params),
-            } as Order;
+              data: await marketplace.makeOrder(params),
+            };
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
@@ -184,9 +184,9 @@ export class Gomu {
           .filter(([_, marketplace]) => marketplace)
           .map(async ([marketplaceName, marketplace]) => {
             const orders = await marketplace.getOrders(params);
-            return orders.map((marketplaceOrder: any) => ({
+            return orders.map((data: any) => ({
               marketplaceName,
-              marketplaceOrder,
+              data,
             }));
           })
       )
@@ -207,7 +207,7 @@ export class Gomu {
     return {
       marketplaceName,
       // @ts-ignore
-      marketplaceResponse: await marketplace.takeOrder(order.marketplaceOrder),
+      marketplaceResponse: await marketplace.takeOrder(order.data),
     };
   }
 
@@ -223,7 +223,7 @@ export class Gomu {
       marketplaceName,
       marketplaceResponse: await marketplace.cancelOrder(
         // @ts-ignore
-        order.marketplaceOrder
+        order.data
       ),
     };
   }

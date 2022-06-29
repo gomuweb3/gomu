@@ -20,6 +20,7 @@ import {
   TakerOrder as TakerOrderPayload,
   LooksRareExchangeAbi,
 } from "@looksrare/sdk";
+import BigNumber from "bignumber.js";
 import fetch from "isomorphic-unfetch";
 
 import { Marketplace } from "./Marketplace";
@@ -36,6 +37,7 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
+  LooksRareOrderData,
 } from "../types";
 
 export interface LooksRareConfig {
@@ -69,7 +71,7 @@ enum Status {
   EXPIRED = "EXPIRED",
 }
 
-export interface MakeOrderResult {
+export interface LooksRareOriginalOrder {
   hash: string;
   collectionAddress: string;
   tokenId: string;
@@ -176,7 +178,7 @@ export const looksrareSupportedChainIds = [
   SupportedChainId.RINKEBY,
 ];
 
-export class LooksRare implements Marketplace<MakeOrderResult> {
+export class LooksRare implements Marketplace<LooksRareOrderData> {
   private readonly apiKey: string | undefined;
   private readonly address: string;
   private readonly chainId: SupportedChainId;
@@ -205,7 +207,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<MakeOrderResult> {
+  }: MakeOrderParams): Promise<LooksRareOrderData> {
     if (taker) {
       // We disable private sale for now
       // We will need to include ethers.js lib to support it because LooksRare uses it to verify address in params
@@ -292,33 +294,36 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       makerOrder
     );
 
-    /* @ts-ignore */
-    return this.postOrder({ ...makerOrder, signature });
+    const order = await this.postOrder({ ...makerOrder, signature });
+
+    return normalizeOrder(order);
   }
 
   /**
    * Creates and posts a TakerOrder to LooksRare exchange contract
    */
-  async takeOrder(makerOrder: MakeOrderResult): Promise<ContractReceipt> {
+  async takeOrder({
+    originalOrder,
+  }: LooksRareOrderData): Promise<ContractReceipt> {
     const takerOrder: TakerOrderPayload = {
-      isOrderAsk: !makerOrder.isOrderAsk,
+      isOrderAsk: !originalOrder.isOrderAsk,
       taker: this.address,
-      price: makerOrder.price,
+      price: originalOrder.price,
       minPercentageToAsk: DEFAULT_MIN_PERCENTAGE_TO_ASK,
-      tokenId: makerOrder.tokenId,
+      tokenId: originalOrder.tokenId,
       params: [], // The typing expects an array even though we should be using a hex value here, I don't know why.
     };
 
     const parsedTakerOrder = {
       ...takerOrder,
-      params: makerOrder.params || DEFAULT_PARAMS_HEX,
+      params: originalOrder.params || DEFAULT_PARAMS_HEX,
     };
 
     const parsedMakerOrder = {
-      ...makerOrder,
-      collection: makerOrder.collectionAddress,
-      currency: makerOrder.currencyAddress,
-      params: makerOrder.params || DEFAULT_PARAMS_HEX,
+      ...originalOrder,
+      collection: originalOrder.collectionAddress,
+      currency: originalOrder.currencyAddress,
+      params: originalOrder.params || DEFAULT_PARAMS_HEX,
     };
 
     return takerOrder.isOrderAsk
@@ -340,7 +345,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<MakeOrderResult[]> {
+  }: GetOrdersParams = {}): Promise<LooksRareOrderData[]> {
     const status = [Status.VALID];
     const sort = "NEWEST";
 
@@ -351,11 +356,13 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     if (!makerAsset && !takerAsset) {
       const signerObj = maker ? { signer: maker } : {};
 
-      return this.fetchOrders({
+      const orders = await this.fetchOrders({
         sort,
         status,
         ...signerObj,
       });
+
+      return orders.map(normalizeOrder);
     }
 
     const query: FetchOrderParams = {
@@ -402,14 +409,16 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
 
     const result = await this.fetchOrders(query);
 
-    return result;
+    return result.map(normalizeOrder);
   }
 
   /**
    * Cancels order on LooksRare exchange contract.
    */
-  async cancelOrder(order: MakeOrderResult): Promise<ContractReceipt> {
-    return this.getExchangeContract().cancelMultipleMakerOrders([order.nonce]);
+  async cancelOrder(orderData: LooksRareOrderData): Promise<ContractReceipt> {
+    return this.getExchangeContract().cancelMultipleMakerOrders([
+      orderData.originalOrder.nonce,
+    ]);
   }
 
   /**
@@ -450,7 +459,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     endTime: number;
     minPercentageToAsk: number;
     params: unknown[];
-  }): Promise<MakeOrderResult> {
+  }): Promise<LooksRareOriginalOrder> {
     const res = await fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
@@ -461,7 +470,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       body: JSON.stringify(payload),
     });
 
-    return this.parseApiResponse<MakeOrderResult>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder>(res);
   }
 
   /**
@@ -469,12 +478,12 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
    */
   private async fetchOrders(
     params: FetchOrderParams
-  ): Promise<MakeOrderResult[]> {
+  ): Promise<LooksRareOriginalOrder[]> {
     const res = await fetch(
       this.getApiUrl(ApiPath.orders, parseFetchParams(params))
     );
 
-    return this.parseApiResponse<MakeOrderResult[]>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder[]>(res);
   }
 
   /**
@@ -552,4 +561,26 @@ function flattenFetchParamObj(
   return Object.entries(objValue).map(([key, value]) => {
     return [`${objName}[${key}]`, value];
   });
+}
+
+function normalizeOrder(order: LooksRareOriginalOrder): LooksRareOrderData {
+  const isSellOrder = order.isOrderAsk;
+  const nftAsset = {
+    contractAddress: order.collectionAddress,
+    tokenId: order.tokenId,
+    amount: order.amount,
+  };
+  const erc20Asset = {
+    contractAddress: order.currencyAddress,
+    type: "ERC20",
+    amount: new BigNumber(order.price).toString(),
+  };
+
+  return {
+    id: order.hash,
+    makerAssets: isSellOrder ? [nftAsset] : [erc20Asset],
+    takerAssets: isSellOrder ? [erc20Asset] : [nftAsset],
+    isSellOrder,
+    originalOrder: order,
+  };
 }
