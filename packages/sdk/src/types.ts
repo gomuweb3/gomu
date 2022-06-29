@@ -63,6 +63,22 @@ export enum MarketplaceName {
   LooksRare = "looksrare",
 }
 
+interface ErrorBase {
+  error?: string;
+}
+
+interface OpenseaBase extends ErrorBase {
+  marketplaceName: MarketplaceName.Opensea;
+}
+
+interface TraderBase extends ErrorBase {
+  marketplaceName: MarketplaceName.Trader;
+}
+
+interface LooksRareBase extends ErrorBase {
+  marketplaceName: MarketplaceName.LooksRare;
+}
+
 export interface NormalizedAsset {
   contractAddress: string;
   tokenId?: string;
@@ -84,20 +100,17 @@ export type TraderOrderData = OrderData<TraderOriginalOrder>;
 
 export type LooksRareOrderData = OrderData<LooksRareOriginalOrder>;
 
-interface BaseOrder<Name, Data> {
-  marketplaceName: Name;
-  error?: string;
-  data?: Data;
+export interface OpenseaOrder extends OpenseaBase {
+  data?: OpenseaOrderData;
 }
 
-export type OpenseaOrder = BaseOrder<MarketplaceName.Opensea, OpenseaOrderData>;
+export interface TraderOrder extends TraderBase {
+  data?: TraderOrderData;
+}
 
-export type TraderOrder = BaseOrder<MarketplaceName.Trader, TraderOrderData>;
-
-export type LooksRareOrder = BaseOrder<
-  MarketplaceName.LooksRare,
-  LooksRareOrderData
->;
+export interface LooksRareOrder extends LooksRareBase {
+  data?: LooksRareOrderData;
+}
 
 export type Order = OpenseaOrder | TraderOrder | LooksRareOrder;
 
@@ -112,50 +125,34 @@ export interface GetOrdersResponse {
   orders: Order[];
 }
 
-interface BaseTakeOrderResponse<Name, Response> {
-  marketplaceName: Name;
-  marketplaceResponse: Response;
+export interface OpenseaTakeOrderResponse extends OpenseaBase {
+  marketplaceResponse: string;
 }
 
-export type OpenseaTakeOrderResponse = BaseTakeOrderResponse<
-  MarketplaceName.Opensea,
-  string
->;
+export interface TraderTakeOrderResponse extends TraderBase {
+  marketplaceResponse: ContractReceipt;
+}
 
-export type TraderTakeOrderResponse = BaseTakeOrderResponse<
-  MarketplaceName.Trader,
-  ContractReceipt
->;
-
-export type LooksRareTakeOrderResponse = BaseTakeOrderResponse<
-  MarketplaceName.LooksRare,
-  _LooksRareContractReceipt
->;
+export interface LooksRareTakeOrderResponse extends LooksRareBase {
+  marketplaceResponse: _LooksRareContractReceipt;
+}
 
 export type TakeOrderResponse =
   | OpenseaTakeOrderResponse
   | TraderTakeOrderResponse
   | LooksRareTakeOrderResponse;
 
-interface BaseCancelOrderResponse<Name, Response> {
-  marketplaceName: Name;
-  marketplaceResponse: Response;
+export interface OpenseaCancelOrderResponse extends OpenseaBase {
+  marketplaceResponse: void;
 }
 
-export type OpenseaCancelOrderResponse = BaseCancelOrderResponse<
-  MarketplaceName.Opensea,
-  void
->;
+export interface TraderCancelOrderResponse extends TraderBase {
+  marketplaceResponse: ContractTransaction;
+}
 
-export type TraderCancelOrderResponse = BaseCancelOrderResponse<
-  MarketplaceName.Trader,
-  ContractTransaction
->;
-
-export type LooksRareCancelOrderResponse = BaseCancelOrderResponse<
-  MarketplaceName.LooksRare,
-  _LooksRareContractReceipt
->;
+export interface LooksRareCancelOrderResponse extends LooksRareBase {
+  marketplaceResponse: _LooksRareContractReceipt;
+}
 
 export type CancelOrderResponse =
   | OpenseaCancelOrderResponse
