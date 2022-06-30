@@ -12,6 +12,7 @@
 
 import { Signer } from "@ethersproject/abstract-signer";
 import { Contract } from "@ethersproject/contracts";
+import { BaseProvider } from "@ethersproject/providers";
 import {
   signMakerOrder,
   addressesByNetwork,
@@ -23,6 +24,7 @@ import {
 import fetch from "isomorphic-unfetch";
 
 import { Marketplace } from "./Marketplace";
+import { approveAsset } from "./approval";
 import {
   assertAssetsIsNotBundled,
   assertAssetsIsNotEmpty,
@@ -31,6 +33,7 @@ import {
 } from "./validators";
 
 import type {
+  Asset,
   Erc1155Asset,
   Erc20Asset,
   Erc721Asset,
@@ -151,6 +154,24 @@ export interface ContractReceipt {
   chainId: number;
 }
 
+interface CollectionResult {
+  address: string;
+  owner: string;
+  name: string;
+  description: string;
+  symbol: string;
+  type: "ERC721" | "ERC1155";
+  websiteLink: string;
+  facebookLink: string;
+  twitterLink: string;
+  instagramLink: string;
+  telegramLink: string;
+  mediumLink: string;
+  discordLink: string;
+  isVerified: boolean;
+  isExplicit: boolean;
+}
+
 const API_ORIGIN: Record<SupportedChainId, string> = {
   [SupportedChainId.HARDHAT]: "http://localhost",
   [SupportedChainId.MAINNET]: "https://api.looksrare.org",
@@ -160,6 +181,7 @@ const API_ORIGIN: Record<SupportedChainId, string> = {
 enum ApiPath {
   orders = "/api/v1/orders",
   orderNonce = "/api/v1/orders/nonce",
+  collections = "/api/v1/collections",
 }
 
 const DAY = 60 * 60 * 24;
@@ -195,6 +217,86 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
 
   static supportsChainId(chainId: number): boolean {
     return looksrareSupportedChainIds.includes(chainId);
+  }
+
+  /**
+   * Approve an asset from Take order.
+   */
+  async approveTakeOrderAsset(order: MakeOrderResult): Promise<void> {
+    const {
+      isOrderAsk,
+      collectionAddress,
+      tokenId,
+      currencyAddress,
+      amount,
+      price,
+    } = order;
+
+    if (!isOrderAsk) {
+      return this.approveAsset({
+        type: "ERC20",
+        amount: BigInt(price),
+        contractAddress: currencyAddress,
+      });
+    }
+
+    const { type } = await this.fetchCollection(collectionAddress);
+
+    const baseAssetData = {
+      contractAddress: collectionAddress,
+      tokenId,
+    };
+
+    if (type === "ERC721") {
+      return this.approveAsset({
+        type,
+        ...baseAssetData,
+      });
+    }
+
+    if (type === "ERC1155") {
+      return this.approveAsset({
+        type,
+        ...baseAssetData,
+        amount: BigInt(amount),
+      });
+    }
+
+    throw new Error("unsupported type");
+  }
+
+  /**
+   * Approves an asset to be used with relevant LooksRare contracts.
+   */
+  async approveAsset(asset: Asset): Promise<void> {
+    const { provider } = this.signer;
+
+    if (!provider) {
+      throw new Error("missing provider");
+    }
+
+    const contractAddresses = addressesByNetwork[this.chainId];
+    let contractAddress;
+
+    if (asset.type === "ERC20") {
+      contractAddress = contractAddresses.EXCHANGE;
+    } else if (asset.type === "ERC721") {
+      contractAddress = contractAddresses.TRANSFER_MANAGER_ERC721;
+    } else if (asset.type === "ERC1155") {
+      contractAddress = contractAddresses.TRANSFER_MANAGER_ERC1155;
+    } else {
+      throw new Error("unsupported asset type");
+    }
+
+    const baseProvider = new BaseProvider(await provider.getNetwork());
+
+    approveAsset({
+      walletAddress: this.address,
+      contractAddress,
+      asset,
+      signer: this.signer,
+      provider: baseProvider,
+    });
   }
 
   /**
@@ -469,6 +571,15 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     );
 
     return this.parseApiResponse<MakeOrderResult[]>(res);
+  }
+
+  /**
+   * Fetches data about collection from LooksRare API.
+   */
+  private async fetchCollection(address: string): Promise<CollectionResult> {
+    const res = await fetch(this.getApiUrl(ApiPath.collections, { address }));
+
+    return this.parseApiResponse<CollectionResult>(res);
   }
 
   /**

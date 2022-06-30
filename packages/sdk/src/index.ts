@@ -9,10 +9,12 @@ import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
 import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
 
 import type { LooksRareConfig } from "./marketplaces/LooksRare";
+import type { Marketplace } from "./marketplaces/Marketplace";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
 import type {
   Asset,
+  AssetApprovalResponse,
   CancelOrderResponse,
   Erc1155Asset,
   Erc20Asset,
@@ -122,6 +124,20 @@ export class Gomu {
     }
   }
 
+  async requestAssetApprovals(
+    assetOrOrder: Asset | Order
+  ): Promise<AssetApprovalResponse[]> {
+    return Promise.all(
+      Object.entries(this.marketplaces).map(([marketplaceName, marketplace]) =>
+        approveAssetsForMarketplace({
+          marketplaceName: marketplaceName as MarketplaceName,
+          marketplace,
+          assetOrOrder,
+        })
+      )
+    );
+  }
+
   async makeOrder({
     marketplaces,
     ...params
@@ -226,6 +242,39 @@ export class Gomu {
         // @ts-ignore
         order.marketplaceOrder
       ),
+    };
+  }
+}
+
+async function approveAssetsForMarketplace({
+  marketplaceName,
+  marketplace,
+  assetOrOrder,
+}: {
+  marketplaceName: MarketplaceName;
+  marketplace: Marketplace<any>;
+  assetOrOrder: Asset | Order;
+}): Promise<AssetApprovalResponse> {
+  try {
+    const approvalPromise =
+      "marketplaceOrder" in assetOrOrder
+        ? marketplace.approveTakeOrderAsset(assetOrOrder)
+        : marketplace.approveAsset(assetOrOrder);
+
+    await approvalPromise;
+
+    return {
+      marketplaceName: marketplaceName as MarketplaceName,
+      data: {
+        approved: true,
+      },
+    };
+  } catch (err) {
+    return {
+      marketplaceName: marketplaceName as MarketplaceName,
+      error: {
+        message: err instanceof Error ? err.message : `${err}`,
+      },
     };
   }
 }
