@@ -16,6 +16,7 @@ import type {
 
 /**
  * Approves asset for use on specified contract address.
+ * @param params Params for asset approval
  */
 export async function approveAsset(params: {
   walletAddress: string;
@@ -28,7 +29,7 @@ export async function approveAsset(params: {
   const swappableAsset = convertAsset(asset);
 
   if (
-    await getAssetApprovalStatus(
+    await isApprovedAsset(
       walletAddress,
       contractAddress,
       swappableAsset,
@@ -54,7 +55,7 @@ export async function approveAsset(params: {
  * @param asset ERC20/ERC721/ERC1155 asset
  * @param provider
  */
-async function getAssetApprovalStatus(
+async function isApprovedAsset(
   walletAddress: string,
   contractAddress: string,
   asset: SwappableAssetV4,

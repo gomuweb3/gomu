@@ -140,3 +140,21 @@ export type CancelOrderResponse =
   | OpenseaCancelOrderResponse
   | TraderCancelOrderResponse
   | LooksrareCancelOrderResponse;
+
+export interface AssetApprovalSuccessResponse {
+  marketplaceName: MarketplaceName;
+  data: {
+    approved: true;
+  };
+}
+
+export interface AssetApprovalErrorResponse {
+  marketplaceName: MarketplaceName;
+  error: {
+    message: string;
+  };
+}
+
+export type AssetApprovalResponse =
+  | AssetApprovalSuccessResponse
+  | AssetApprovalErrorResponse;

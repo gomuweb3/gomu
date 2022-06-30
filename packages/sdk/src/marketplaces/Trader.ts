@@ -78,8 +78,6 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     makerAsset = getSwappableAssetV4(makerAsset);
     takerAsset = getSwappableAssetV4(takerAsset);
 
-    await this.approveAsset(makerAsset);
-
     const order = this.nftSwapSdk.buildOrder(
       // @ts-ignore
       makerAsset,
@@ -125,26 +123,6 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
   async takeOrder(order: PostOrderResponsePayload): Promise<ContractReceipt> {
     const signedOrder = order.order;
 
-    let takerAsset: SwappableAssetV4;
-    if (order.sellOrBuyNft === "buy") {
-      takerAsset = {
-        tokenAddress: order.nftToken,
-        tokenId: order.nftTokenId,
-        type: order.nftType as "ERC721" | "ERC1155",
-        amount: order.nftTokenAmount,
-      };
-    } else if (order.sellOrBuyNft === "sell") {
-      takerAsset = {
-        tokenAddress: order.erc20Token,
-        type: "ERC20",
-        amount: order.erc20TokenAmount,
-      };
-    } else {
-      throw new Error(`unknown side: ${order.sellOrBuyNft}`);
-    }
-
-    await this.approveAsset(takerAsset);
-
     const fillTx = await this.nftSwapSdk.fillSignedOrder(
       signedOrder,
       undefined,
@@ -164,15 +142,38 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     );
   }
 
-  private async approveAsset(asset: SwappableAssetV4): Promise<void> {
+  async approveTakeOrderAsset(order: PostOrderResponsePayload): Promise<void> {
+    const takerAsset = getTakerAssetFromTakeOrder(order);
+    const { type, tokenAddress } = takerAsset;
+
+    if (type === "ERC20") {
+      return this.approveAsset({
+        type,
+        amount: BigInt(takerAsset.amount),
+        contractAddress: tokenAddress,
+      });
+    }
+
+    if (type === "ERC721") {
+      return this.approveAsset({
+        type,
+        contractAddress: tokenAddress,
+        tokenId: takerAsset.tokenId,
+      });
+    }
+  }
+
+  async approveAsset(asset: Asset): Promise<void> {
+    const swappableAsset = getSwappableAssetV4(asset);
+
     const approvalStatus = await this.nftSwapSdk.loadApprovalStatus(
-      asset,
+      swappableAsset,
       this.address
     );
 
     if (!approvalStatus.contractApproved) {
       const approvalTx = await this.nftSwapSdk.approveTokenOrNftByAsset(
-        asset,
+        swappableAsset,
         this.address
       );
       await approvalTx.wait();
@@ -230,4 +231,27 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
     default:
       throw new Error(`unknown asset type: ${type}`);
   }
+}
+
+function getTakerAssetFromTakeOrder(
+  order: PostOrderResponsePayload
+): SwappableAssetV4 {
+  if (order.sellOrBuyNft === "buy") {
+    return {
+      tokenAddress: order.nftToken,
+      tokenId: order.nftTokenId,
+      type: order.nftType as "ERC721" | "ERC1155",
+      amount: order.nftTokenAmount,
+    };
+  }
+
+  if (order.sellOrBuyNft === "sell") {
+    return {
+      tokenAddress: order.erc20Token,
+      type: "ERC20",
+      amount: order.erc20TokenAmount,
+    };
+  }
+
+  throw new Error(`unknown side: ${order.sellOrBuyNft}`);
 }
