@@ -87,10 +87,10 @@ export interface NormalizedAsset {
   contractAddress: string;
   tokenId?: string;
   type?: string;
-  amount: string;
+  amount: bigint;
 }
 
-export interface OrderData<OriginalOrder> {
+export interface NormalizedOrder<OriginalOrder> {
   id: string;
   makerAssets: NormalizedAsset[];
   takerAssets: NormalizedAsset[];
@@ -98,25 +98,28 @@ export interface OrderData<OriginalOrder> {
   originalOrder: OriginalOrder;
 }
 
-export type OpenseaOrderData = OrderData<OpenseaOriginalOrder>;
+export type OpenseaNormalizedOrder = NormalizedOrder<OpenseaOriginalOrder>;
 
-export type TraderOrderData = OrderData<TraderOriginalOrder>;
+export type TraderNormalizedOrder = NormalizedOrder<TraderOriginalOrder>;
 
-export type LooksRareOrderData = OrderData<LooksRareOriginalOrder>;
+export type LooksRareNormalizedOrder = NormalizedOrder<LooksRareOriginalOrder>;
 
-export interface OpenseaOrder extends OpenseaBase {
-  data?: OpenseaOrderData;
+export interface OpenseaOrderResponse extends OpenseaBase {
+  data?: OpenseaNormalizedOrder;
 }
 
-export interface TraderOrder extends TraderBase {
-  data?: TraderOrderData;
+export interface TraderOrderResponse extends TraderBase {
+  data?: TraderNormalizedOrder;
 }
 
-export interface LooksRareOrder extends LooksRareBase {
-  data?: LooksRareOrderData;
+export interface LooksRareOrderResponse extends LooksRareBase {
+  data?: LooksRareNormalizedOrder;
 }
 
-export type Order = OpenseaOrder | TraderOrder | LooksRareOrder;
+export type OrderResponse =
+  | OpenseaOrderResponse
+  | TraderOrderResponse
+  | LooksRareOrderResponse;
 
 export interface GetOrdersParams {
   maker?: string;
@@ -126,7 +129,7 @@ export interface GetOrdersParams {
 }
 
 export interface GetOrdersResponse {
-  orders: Order[];
+  orders: OrderResponse[];
 }
 
 export interface OpenseaTakeOrderResponse extends OpenseaBase {

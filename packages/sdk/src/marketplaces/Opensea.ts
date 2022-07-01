@@ -18,7 +18,7 @@ import type {
   GetOrdersParams,
   MakeOrderParams,
   NormalizedAsset,
-  OpenseaOrderData,
+  OpenseaNormalizedOrder,
 } from "../types";
 import type {
   OrderV2 as OpenseaOriginalOrder,
@@ -43,7 +43,7 @@ export interface _OpenseaConfig extends OpenseaConfig {
 
 export const openseaSupportedChainIds = [1, 4];
 
-export class Opensea implements Marketplace<OpenseaOrderData> {
+export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
 
@@ -65,7 +65,7 @@ export class Opensea implements Marketplace<OpenseaOrderData> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<OpenseaOrderData> {
+  }: MakeOrderParams): Promise<OpenseaNormalizedOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -135,7 +135,7 @@ export class Opensea implements Marketplace<OpenseaOrderData> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<OpenseaOrderData[]> {
+  }: GetOrdersParams = {}): Promise<OpenseaNormalizedOrder[]> {
     const query: Omit<OrdersQueryOptions, "limit"> = {
       // https://github.com/ProjectOpenSea/opensea-js/blob/master/src/api.ts#L106 limit is currently omitted here
       protocol: "seaport",
@@ -196,16 +196,16 @@ export class Opensea implements Marketplace<OpenseaOrderData> {
   }
   /* eslint-enable camelcase */
 
-  async takeOrder(orderData: OpenseaOrderData): Promise<string> {
+  async takeOrder(order: OpenseaNormalizedOrder): Promise<string> {
     return this.seaport.fulfillOrder({
-      order: orderData.originalOrder,
+      order: order.originalOrder,
       accountAddress: this.address,
     });
   }
 
-  async cancelOrder(orderData: OpenseaOrderData): Promise<void> {
+  async cancelOrder(order: OpenseaNormalizedOrder): Promise<void> {
     return this.seaport.cancelOrder({
-      order: orderData.originalOrder,
+      order: order.originalOrder,
       accountAddress: this.address,
     });
   }
@@ -237,14 +237,14 @@ function normalizeAssets(assets: OpenSeaAsset[]): NormalizedAsset[] {
       contractAddress: asset.assetContract.address,
       tokenId: asset.tokenId!,
       type: asset.assetContract.schemaName,
-      amount: "1",
+      amount: BigInt(1),
     };
   });
 }
 
 // Opensea OrderV2 contains price on root level, but payment token info in either maker or taker bundle
 // for now we are working only with orders that use single erc20 payment token
-function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrderData {
+function normalizeOrder(order: OpenseaOriginalOrder): OpenseaNormalizedOrder {
   const isSellOrder = order.side === ORDER_SIDE_SELL;
   const erc20Asset = {
     contractAddress: (isSellOrder
@@ -252,7 +252,7 @@ function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrderData {
       : order.makerAssetBundle
     ).assets[0].assetContract.address,
     type: "ERC20",
-    amount: new BigNumber(order.currentPrice).toString(),
+    amount: BigInt(order.currentPrice),
   };
 
   return {

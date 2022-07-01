@@ -20,7 +20,6 @@ import {
   TakerOrder as TakerOrderPayload,
   LooksRareExchangeAbi,
 } from "@looksrare/sdk";
-import BigNumber from "bignumber.js";
 import fetch from "isomorphic-unfetch";
 
 import { Marketplace } from "./Marketplace";
@@ -37,7 +36,7 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
-  LooksRareOrderData,
+  LooksRareNormalizedOrder,
 } from "../types";
 
 export interface LooksRareConfig {
@@ -178,7 +177,7 @@ export const looksrareSupportedChainIds = [
   SupportedChainId.RINKEBY,
 ];
 
-export class LooksRare implements Marketplace<LooksRareOrderData> {
+export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
   private readonly apiKey: string | undefined;
   private readonly address: string;
   private readonly chainId: SupportedChainId;
@@ -207,7 +206,7 @@ export class LooksRare implements Marketplace<LooksRareOrderData> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<LooksRareOrderData> {
+  }: MakeOrderParams): Promise<LooksRareNormalizedOrder> {
     if (taker) {
       // We disable private sale for now
       // We will need to include ethers.js lib to support it because LooksRare uses it to verify address in params
@@ -304,7 +303,7 @@ export class LooksRare implements Marketplace<LooksRareOrderData> {
    */
   async takeOrder({
     originalOrder,
-  }: LooksRareOrderData): Promise<ContractReceipt> {
+  }: LooksRareNormalizedOrder): Promise<ContractReceipt> {
     const takerOrder: TakerOrderPayload = {
       isOrderAsk: !originalOrder.isOrderAsk,
       taker: this.address,
@@ -345,7 +344,7 @@ export class LooksRare implements Marketplace<LooksRareOrderData> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<LooksRareOrderData[]> {
+  }: GetOrdersParams = {}): Promise<LooksRareNormalizedOrder[]> {
     const status = [Status.VALID];
     const sort = "NEWEST";
 
@@ -409,9 +408,9 @@ export class LooksRare implements Marketplace<LooksRareOrderData> {
   /**
    * Cancels order on LooksRare exchange contract.
    */
-  async cancelOrder(orderData: LooksRareOrderData): Promise<ContractReceipt> {
+  async cancelOrder(order: LooksRareNormalizedOrder): Promise<ContractReceipt> {
     return this.getExchangeContract().cancelMultipleMakerOrders([
-      orderData.originalOrder.nonce,
+      order.originalOrder.nonce,
     ]);
   }
 
@@ -559,17 +558,17 @@ function flattenFetchParamObj(
 
 export function normalizeOrder(
   order: LooksRareOriginalOrder
-): LooksRareOrderData {
+): LooksRareNormalizedOrder {
   const isSellOrder = order.isOrderAsk;
   const nftAsset = {
     contractAddress: order.collectionAddress,
     tokenId: order.tokenId,
-    amount: order.amount,
+    amount: BigInt(order.amount),
   };
   const erc20Asset = {
     contractAddress: order.currencyAddress,
     type: "ERC20",
-    amount: new BigNumber(order.price).toString(),
+    amount: BigInt(order.price),
   };
 
   return {

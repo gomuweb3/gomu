@@ -23,7 +23,7 @@ import type {
   MakeSellOrderParams,
   MakeBuyOrderParams,
   MarketplaceName,
-  Order,
+  OrderResponse,
   TakeOrderResponse,
 } from "./types";
 
@@ -124,7 +124,7 @@ export class Gomu {
   async makeOrder({
     marketplaces,
     ...params
-  }: MakeOrderParams): Promise<Order[]> {
+  }: MakeOrderParams): Promise<OrderResponse[]> {
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([marketplaceName, marketplace]) => {
@@ -159,7 +159,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeSellOrderParams): Promise<Order[]> {
+  }: MakeSellOrderParams): Promise<OrderResponse[]> {
     return this.makeOrder({
       makerAssets: assets,
       takerAssets: [{ contractAddress, amount, type: "ERC20" }],
@@ -171,7 +171,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeBuyOrderParams): Promise<Order[]> {
+  }: MakeBuyOrderParams): Promise<OrderResponse[]> {
     return this.makeOrder({
       makerAssets: [{ contractAddress, amount, type: "ERC20" }],
       takerAssets: assets,
@@ -198,7 +198,7 @@ export class Gomu {
     };
   }
 
-  async takeOrder(order: Order): Promise<TakeOrderResponse> {
+  async takeOrder(order: OrderResponse): Promise<TakeOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
     if (!marketplace) {
@@ -213,7 +213,7 @@ export class Gomu {
     };
   }
 
-  async cancelOrder(order: Order): Promise<CancelOrderResponse> {
+  async cancelOrder(order: OrderResponse): Promise<CancelOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
     if (!marketplace) {

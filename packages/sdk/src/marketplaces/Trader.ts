@@ -13,7 +13,7 @@ import type {
   Asset,
   GetOrdersParams,
   MakeOrderParams,
-  TraderOrderData,
+  TraderNormalizedOrder,
 } from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
@@ -41,7 +41,7 @@ export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
   .filter((key) => Number.isInteger(Number(key)))
   .map(Number);
 
-export class Trader implements Marketplace<TraderOrderData> {
+export class Trader implements Marketplace<TraderNormalizedOrder> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
   private readonly address: string;
@@ -69,7 +69,7 @@ export class Trader implements Marketplace<TraderOrderData> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<TraderOrderData> {
+  }: MakeOrderParams): Promise<TraderNormalizedOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -110,7 +110,7 @@ export class Trader implements Marketplace<TraderOrderData> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<TraderOrderData[]> {
+  }: GetOrdersParams = {}): Promise<TraderNormalizedOrder[]> {
     let filters: Partial<SearchOrdersParams> = {};
 
     if (makerAsset) {
@@ -135,7 +135,7 @@ export class Trader implements Marketplace<TraderOrderData> {
 
   async takeOrder({
     originalOrder,
-  }: TraderOrderData): Promise<ContractReceipt> {
+  }: TraderNormalizedOrder): Promise<ContractReceipt> {
     const signedOrder = originalOrder.order;
 
     let takerAsset: SwappableAssetV4;
@@ -170,7 +170,7 @@ export class Trader implements Marketplace<TraderOrderData> {
 
   async cancelOrder({
     originalOrder,
-  }: TraderOrderData): Promise<ContractTransaction> {
+  }: TraderNormalizedOrder): Promise<ContractTransaction> {
     return this.nftSwapSdk.cancelOrder(
       originalOrder.order.nonce,
       originalOrder.nftType as "ERC721" | "ERC1155"
@@ -245,18 +245,18 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
   }
 }
 
-function normalizeOrder(order: TraderOriginalOrder): TraderOrderData {
+function normalizeOrder(order: TraderOriginalOrder): TraderNormalizedOrder {
   const isSellOrder = order.sellOrBuyNft === ORDER_SIDE_SELL;
   const nftAsset = {
     contractAddress: order.nftToken,
     tokenId: order.nftTokenId,
     type: order.nftType,
-    amount: order.nftTokenAmount,
+    amount: BigInt(order.nftTokenAmount),
   };
   const erc20Asset = {
     contractAddress: order.erc20Token,
     type: "ERC20",
-    amount: order.erc20TokenAmount,
+    amount: BigInt(order.erc20TokenAmount),
   };
 
   return {
