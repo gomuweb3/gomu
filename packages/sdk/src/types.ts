@@ -46,7 +46,9 @@ export interface BasisPointsFee extends BaseFee {
 
 export type Fee = FlatAmountFee | BasisPointsFee;
 
-export type BigNumberFee = { recipient: string; amount: BigNumberish };
+export interface BigNumberFee extends BaseFee {
+  amount: BigNumberish;
+}
 
 interface MarketplacesConfig {
   trader: {
