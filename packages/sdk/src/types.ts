@@ -1,3 +1,5 @@
+import BigNumber from "bignumber.js";
+
 import type {
   MakeOrderResult as _LooksRareOrder,
   ContractReceipt as _LooksRareContractReceipt,
@@ -30,6 +32,20 @@ export interface Erc1155Asset {
 
 export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset;
 
+export type FlatAmountFee = { recipient: string; amount: bigint };
+
+export type BigNumberFee = { recipient: string; amount: BigNumber };
+
+export type BasisPointsFee = { recipient: string; basisPoints: number };
+
+export type Fee = FlatAmountFee | BasisPointsFee;
+
+interface MarketplacesConfig {
+  trader: {
+    fees: Fee[];
+  };
+}
+
 export interface MakeOrderParams {
   /** Assets the user has */
   makerAssets: Asset[];
@@ -45,6 +61,9 @@ export interface MakeOrderParams {
 
   /** Selected marketplaces */
   marketplaces?: `${MarketplaceName}`[];
+
+  /** Configs for specific marketplaces */
+  marketplacesConfig?: MarketplacesConfig;
 }
 
 export type MakeSellOrderParams = Omit<

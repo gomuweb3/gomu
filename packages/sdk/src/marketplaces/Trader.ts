@@ -9,7 +9,7 @@ import {
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
 
-import type { Asset, GetOrdersParams, MakeOrderParams } from "../types";
+import type { Asset, FlatAmountFee, GetOrdersParams, MakeOrderParams } from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
   ContractReceipt,
@@ -64,6 +64,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     takerAssets,
     taker,
     expirationTime,
+    marketplacesConfig,
   }: MakeOrderParams): Promise<PostOrderResponsePayload> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
@@ -77,6 +78,22 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
 
     makerAsset = getSwappableAssetV4(makerAsset);
     takerAsset = getSwappableAssetV4(takerAsset);
+
+    const { fees } = marketplacesConfig?.trader || {};
+
+    if (fees?.length) {
+      const flatAmountFees = fees.reduce((acc, fee) => {
+        if (fee.amount > 0) {
+          return acc.concat(fee);
+        }
+
+        if (fee.basisPoints > 0) {
+          return acc.concat(fee); // TODO compute flat fee
+        }
+
+        return acc;
+      }, { fees: } as { fees: FlatAmountFee[], totalFeeAmount:  });
+    }
 
     await this.approveAsset(makerAsset);
 
