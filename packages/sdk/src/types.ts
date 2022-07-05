@@ -2,6 +2,7 @@ import type {
   MakeOrderResult as _LooksRareOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
+import type { BigNumberish } from "@ethersproject/bignumber";
 import type {
   ContractReceipt,
   ContractTransaction,
@@ -30,6 +31,30 @@ export interface Erc1155Asset {
 
 export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset;
 
+interface BaseFee {
+  recipient: string;
+}
+
+export interface FlatAmountFee extends BaseFee {
+  amount: bigint;
+}
+
+export interface BasisPointsFee extends BaseFee {
+  basisPoints: number;
+}
+
+export type Fee = FlatAmountFee | BasisPointsFee;
+
+export interface BigNumberFee extends BaseFee {
+  amount: BigNumberish;
+}
+
+interface MarketplacesConfig {
+  trader: {
+    fees: Fee[];
+  };
+}
+
 export interface MakeOrderParams {
   /** Assets the user has */
   makerAssets: Asset[];
@@ -45,6 +70,9 @@ export interface MakeOrderParams {
 
   /** Selected marketplaces */
   marketplaces?: `${MarketplaceName}`[];
+
+  /** Configs for specific marketplaces */
+  marketplacesConfig?: MarketplacesConfig;
 }
 
 export type MakeSellOrderParams = Omit<
