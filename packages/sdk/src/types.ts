@@ -1,4 +1,4 @@
-import BigNumber from "bignumber.js";
+import { BigNumberish } from "@ethersproject/bignumber";
 
 import type {
   MakeOrderResult as _LooksRareOrder,
@@ -34,11 +34,11 @@ export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset;
 
 export type FlatAmountFee = { recipient: string; amount: bigint };
 
-export type BigNumberFee = { recipient: string; amount: BigNumber };
-
 export type BasisPointsFee = { recipient: string; basisPoints: number };
 
-export type Fee = FlatAmountFee | BasisPointsFee;
+export type Fee = FlatAmountFee & BasisPointsFee;
+
+export type BigNumberFee = { recipient: string; amount: BigNumberish };
 
 interface MarketplacesConfig {
   trader: {

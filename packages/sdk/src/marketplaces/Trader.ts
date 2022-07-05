@@ -1,6 +1,7 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { BaseProvider } from "@ethersproject/providers";
 import { NftSwapV4, SupportedChainIdsV4 } from "@traderxyz/nft-swap-sdk";
+import BigNumber from "bignumber.js";
 
 import {
   assertAssetsIsNotBundled,
@@ -9,13 +10,22 @@ import {
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
 
-import type { Asset, FlatAmountFee, GetOrdersParams, MakeOrderParams } from "../types";
+import type {
+  Asset,
+  BigNumberFee,
+  Fee,
+  GetOrdersParams,
+  MakeOrderParams,
+} from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
   ContractReceipt,
   ContractTransaction,
 } from "@ethersproject/contracts";
-import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
+import type {
+  SwappableAssetV4,
+  UserFacingERC20AssetDataSerializedV4,
+} from "@traderxyz/nft-swap-sdk";
 import type {
   PostOrderResponsePayload,
   SearchOrdersParams,
@@ -35,6 +45,8 @@ export interface _TraderConfig extends TraderConfig {
 export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
   .filter((key) => Number.isInteger(Number(key)))
   .map(Number);
+
+const BASIS_POINTS_100_PERCENT = 10000;
 
 export class Trader implements Marketplace<PostOrderResponsePayload> {
   private readonly nftSwapSdk: NftSwapV4;
@@ -79,20 +91,18 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     makerAsset = getSwappableAssetV4(makerAsset);
     takerAsset = getSwappableAssetV4(takerAsset);
 
+    const erc20Asset = (
+      makerAsset.type === "ERC20" ? makerAsset : takerAsset
+    ) as UserFacingERC20AssetDataSerializedV4;
     const { fees } = marketplacesConfig?.trader || {};
+    const { flatAmountFees, totalFeesAmount } = calculateFees(fees, erc20Asset);
 
-    if (fees?.length) {
-      const flatAmountFees = fees.reduce((acc, fee) => {
-        if (fee.amount > 0) {
-          return acc.concat(fee);
-        }
-
-        if (fee.basisPoints > 0) {
-          return acc.concat(fee); // TODO compute flat fee
-        }
-
-        return acc;
-      }, { fees: } as { fees: FlatAmountFee[], totalFeeAmount:  });
+    // Nft-swap-sdk adds fees on top of erc20 amount, so we need to subtract total fees from amount
+    // https://github.com/trader-xyz/nft-swap-sdk/blob/main/src/sdk/v4/NftSwapV4.ts#L1148
+    if (totalFeesAmount.gte(0)) {
+      erc20Asset.amount = new BigNumber(erc20Asset.amount)
+        .minus(totalFeesAmount)
+        .toString();
     }
 
     await this.approveAsset(makerAsset);
@@ -105,6 +115,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
       {
         taker,
         expiry: expirationTime,
+        fees: flatAmountFees,
       }
     );
     const signedOrder = await this.nftSwapSdk.signOrder(order);
@@ -247,4 +258,59 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
     default:
       throw new Error(`unknown asset type: ${type}`);
   }
+}
+
+function calculateFees(
+  fees: Fee[] | undefined,
+  erc20Asset: UserFacingERC20AssetDataSerializedV4
+): { flatAmountFees: BigNumberFee[]; totalFeesAmount: BigNumber } {
+  const flatAmountFees: BigNumberFee[] = [];
+  let totalFeesAmount = new BigNumber(0);
+
+  if (fees?.length) {
+    const { amount } = erc20Asset;
+
+    for (let i = 0; i <= fees.length; i++) {
+      const fee = fees[i];
+
+      if (fee.amount > 0) {
+        if (new BigNumber(String(fee.amount)).gte(new BigNumber(amount))) {
+          throw new Error(
+            "Fee amount cannot be greater than or equal to amount"
+          );
+        }
+
+        flatAmountFees.push({ ...fee, amount: String(fee.amount) });
+        totalFeesAmount = totalFeesAmount.plus(
+          new BigNumber(String(fee.amount))
+        );
+        continue;
+      }
+
+      if (fee.basisPoints > 0) {
+        if (fee.basisPoints >= BASIS_POINTS_100_PERCENT) {
+          throw new Error(
+            "Fee basis points cannot be greater than or equal to 100% of amount"
+          );
+        }
+
+        const feeAmount = new BigNumber(amount)
+          .times(fee.basisPoints)
+          .div(BASIS_POINTS_100_PERCENT)
+          .toFixed(0);
+
+        flatAmountFees.push({
+          ...fee,
+          amount: feeAmount.toString(),
+        });
+        totalFeesAmount = totalFeesAmount.plus(feeAmount);
+      }
+    }
+
+    if (totalFeesAmount.gte(new BigNumber(amount))) {
+      throw new Error("Total fees cannot be greater than or equal to amount");
+    }
+  }
+
+  return { flatAmountFees, totalFeesAmount };
 }
