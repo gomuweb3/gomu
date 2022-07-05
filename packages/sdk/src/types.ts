@@ -1,9 +1,8 @@
-import { BigNumberish } from "@ethersproject/bignumber";
-
 import type {
   MakeOrderResult as _LooksRareOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
+import type { BigNumberish } from "@ethersproject/bignumber";
 import type {
   ContractReceipt,
   ContractTransaction,
