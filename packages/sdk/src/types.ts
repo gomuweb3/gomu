@@ -32,11 +32,19 @@ export interface Erc1155Asset {
 
 export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset;
 
-export type FlatAmountFee = { recipient: string; amount: bigint };
+interface BaseFee {
+  recipient: string;
+}
 
-export type BasisPointsFee = { recipient: string; basisPoints: number };
+export interface FlatAmountFee extends BaseFee {
+  amount: bigint;
+}
 
-export type Fee = FlatAmountFee & BasisPointsFee;
+export interface BasisPointsFee extends BaseFee {
+  basisPoints: number;
+}
+
+export type Fee = FlatAmountFee | BasisPointsFee;
 
 export type BigNumberFee = { recipient: string; amount: BigNumberish };
 

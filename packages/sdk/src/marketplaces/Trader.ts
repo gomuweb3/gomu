@@ -278,7 +278,7 @@ function calculateFees(
     for (let i = 0; i <= fees.length; i++) {
       const fee = fees[i];
 
-      if (fee.amount > 0) {
+      if ("amount" in fee && fee.amount > 0) {
         if (new BigNumber(String(fee.amount)).gte(new BigNumber(amount))) {
           throw new Error(
             "Fee amount cannot be greater than or equal to amount"
@@ -292,7 +292,7 @@ function calculateFees(
         continue;
       }
 
-      if (fee.basisPoints > 0) {
+      if ("basisPoints" in fee && fee.basisPoints > 0) {
         if (fee.basisPoints >= BASIS_POINTS_100_PERCENT) {
           throw new Error(
             "Fee basis points cannot be greater than or equal to 100% of amount"
