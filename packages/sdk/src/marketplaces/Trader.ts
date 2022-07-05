@@ -46,8 +46,6 @@ export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
   .filter((key) => Number.isInteger(Number(key)))
   .map(Number);
 
-const BASIS_POINTS_100_PERCENT = 10000;
-
 export class Trader implements Marketplace<PostOrderResponsePayload> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
@@ -91,18 +89,25 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     makerAsset = getSwappableAssetV4(makerAsset);
     takerAsset = getSwappableAssetV4(takerAsset);
 
-    const erc20Asset = (
+    const { amount } = (
       makerAsset.type === "ERC20" ? makerAsset : takerAsset
     ) as UserFacingERC20AssetDataSerializedV4;
     const { fees } = marketplacesConfig?.trader || {};
-    const { flatAmountFees, totalFeesAmount } = calculateFees(fees, erc20Asset);
+    const { flatAmountFees, totalFeesAmount } = calculateFees(fees, amount);
 
-    // Nft-swap-sdk adds fees on top of erc20 amount, so we need to subtract total fees from amount
+    // Nft-swap-sdk adds fees on top of erc20 amount, so we need to subtract total fees from erc20 amount
     // https://github.com/trader-xyz/nft-swap-sdk/blob/main/src/sdk/v4/NftSwapV4.ts#L1148
     if (totalFeesAmount.gte(0)) {
-      erc20Asset.amount = new BigNumber(erc20Asset.amount)
+      const amountWithoutFees = new BigNumber(amount)
         .minus(totalFeesAmount)
         .toString();
+      if (makerAsset.type === "ERC20") {
+        makerAsset.amount = amountWithoutFees;
+      }
+
+      if (takerAsset.type === "ERC20") {
+        takerAsset.amount = amountWithoutFees;
+      }
     }
 
     await this.approveAsset(makerAsset);
@@ -260,16 +265,16 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
   }
 }
 
+const BASIS_POINTS_100_PERCENT = 10000;
+
 function calculateFees(
   fees: Fee[] | undefined,
-  erc20Asset: UserFacingERC20AssetDataSerializedV4
+  amount: string
 ): { flatAmountFees: BigNumberFee[]; totalFeesAmount: BigNumber } {
   const flatAmountFees: BigNumberFee[] = [];
   let totalFeesAmount = new BigNumber(0);
 
   if (fees?.length) {
-    const { amount } = erc20Asset;
-
     for (let i = 0; i <= fees.length; i++) {
       const fee = fees[i];
 
