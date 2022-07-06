@@ -70,7 +70,7 @@ export enum Status {
   EXPIRED = "EXPIRED",
 }
 
-export interface LooksRareOriginalOrder {
+export interface LooksRareOrder {
   hash: string;
   collectionAddress: string;
   tokenId: string;
@@ -452,7 +452,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
     endTime: number;
     minPercentageToAsk: number;
     params: unknown[];
-  }): Promise<LooksRareOriginalOrder> {
+  }): Promise<LooksRareOrder> {
     const res = await fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
@@ -463,7 +463,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
       body: JSON.stringify(payload),
     });
 
-    return this.parseApiResponse<LooksRareOriginalOrder>(res);
+    return this.parseApiResponse<LooksRareOrder>(res);
   }
 
   /**
@@ -471,12 +471,12 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
    */
   private async fetchOrders(
     params: FetchOrderParams
-  ): Promise<LooksRareOriginalOrder[]> {
+  ): Promise<LooksRareOrder[]> {
     const res = await fetch(
       this.getApiUrl(ApiPath.orders, parseFetchParams(params))
     );
 
-    return this.parseApiResponse<LooksRareOriginalOrder[]>(res);
+    return this.parseApiResponse<LooksRareOrder[]>(res);
   }
 
   /**
@@ -557,25 +557,28 @@ function flattenFetchParamObj(
 }
 
 export function normalizeOrder(
-  order: LooksRareOriginalOrder
+  order: LooksRareOrder
 ): LooksRareNormalizedOrder {
   const isSellOrder = order.isOrderAsk;
+
   const nftAsset = {
+    type: "Unknown", // LooksRare orders api does not return type unfortunately
     contractAddress: order.collectionAddress,
     tokenId: order.tokenId,
     amount: BigInt(order.amount),
-  };
+  } as const;
+
   const erc20Asset = {
     contractAddress: order.currencyAddress,
     type: "ERC20",
     amount: BigInt(order.price),
-  };
+  } as const;
 
   return {
     id: order.hash,
     makerAssets: isSellOrder ? [nftAsset] : [erc20Asset],
     takerAssets: isSellOrder ? [erc20Asset] : [nftAsset],
-    isSellOrder,
+    maker: order.signer,
     originalOrder: order,
   };
 }

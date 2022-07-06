@@ -1,13 +1,13 @@
 import type {
-  LooksRareOriginalOrder,
+  LooksRareOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
 import type {
-  ContractReceipt,
-  ContractTransaction,
+  ContractReceipt as TraderContractReceipt,
+  ContractTransaction as TraderContractTransaction,
 } from "@ethersproject/contracts";
-import type { PostOrderResponsePayload as TraderOriginalOrder } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
-import type { OrderV2 as OpenseaOriginalOrder } from "opensea-js/lib/orders/types";
+import type { PostOrderResponsePayload as TraderOrder } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
+import type { OrderV2 as OpenseaOrder } from "opensea-js/lib/orders/types";
 
 export interface Erc20Asset {
   contractAddress: string;
@@ -28,7 +28,38 @@ export interface Erc1155Asset {
   amount: bigint;
 }
 
-export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset;
+/**
+ * Asset should mark all fields that have no intersection across other asset types as optional.
+ * For representing asset whose types we do not yet know how to classify like Opensea's `LegacyEnjin`
+ * and `ENSShortNameAuction`.
+ */
+export interface UnknownAsset {
+  contractAddress: string;
+  tokenId?: string;
+  type: "Unknown";
+  amount?: bigint;
+}
+
+export type Asset = Erc20Asset | Erc721Asset | Erc1155Asset | UnknownAsset;
+
+type Merge<X, Y> = {
+  [K in keyof X | keyof Y]?:
+    | (K extends keyof X ? X[K] : never)
+    | (K extends keyof Y ? Y[K] : never);
+};
+
+/**
+ * AnyAsset has all possible asset type fields.
+ * Non-overlapping asset fields (e.g. amount) will be optional while the rest are
+ * kept as non-optional (e.g. type, contractAddress).
+ * Meant to be used as a convenient container type for when we do not need distinct asset types.
+ * e.g. anyAsset: AnyAsset = erc721Asset, anyAsset: AnyAsset = erc1155Asset, etc.
+ */
+export type AnyAsset = Merge<
+  Merge<Merge<Erc20Asset, Erc721Asset>, Erc1155Asset>,
+  UnknownAsset
+> &
+  Asset;
 
 export interface MakeOrderParams {
   /** Assets the user has */
@@ -63,26 +94,6 @@ export enum MarketplaceName {
   LooksRare = "looksrare",
 }
 
-interface ErrorObj {
-  message?: string;
-}
-
-interface ErrorBase {
-  error?: ErrorObj;
-}
-
-interface OpenseaBase extends ErrorBase {
-  marketplaceName: MarketplaceName.Opensea;
-}
-
-interface TraderBase extends ErrorBase {
-  marketplaceName: MarketplaceName.Trader;
-}
-
-interface LooksRareBase extends ErrorBase {
-  marketplaceName: MarketplaceName.LooksRare;
-}
-
 export interface NormalizedAsset {
   contractAddress: string;
   tokenId?: string;
@@ -92,29 +103,46 @@ export interface NormalizedAsset {
 
 export interface NormalizedOrder<OriginalOrder> {
   id: string;
-  makerAssets: NormalizedAsset[];
-  takerAssets: NormalizedAsset[];
-  isSellOrder: boolean;
+  makerAssets: Asset[];
+  takerAssets: Asset[];
+  maker: string;
   originalOrder: OriginalOrder;
 }
 
-export type OpenseaNormalizedOrder = NormalizedOrder<OpenseaOriginalOrder>;
+export type OpenseaNormalizedOrder = NormalizedOrder<OpenseaOrder>;
 
-export type TraderNormalizedOrder = NormalizedOrder<TraderOriginalOrder>;
+export type TraderNormalizedOrder = NormalizedOrder<TraderOrder>;
 
-export type LooksRareNormalizedOrder = NormalizedOrder<LooksRareOriginalOrder>;
+export type LooksRareNormalizedOrder = NormalizedOrder<LooksRareOrder>;
 
-export interface OpenseaOrderResponse extends OpenseaBase {
-  data?: OpenseaNormalizedOrder;
+interface ResponseData<N, D> {
+  marketplaceName: N;
+  data: D;
 }
 
-export interface TraderOrderResponse extends TraderBase {
-  data?: TraderNormalizedOrder;
-}
+type Response<N, D> =
+  | ResponseData<N, D>
+  | {
+      marketplaceName: N;
+      error: {
+        message?: string;
+      };
+    };
 
-export interface LooksRareOrderResponse extends LooksRareBase {
-  data?: LooksRareNormalizedOrder;
-}
+export type OpenseaOrderResponse = Response<
+  MarketplaceName.Opensea,
+  OpenseaNormalizedOrder
+>;
+
+export type TraderOrderResponse = Response<
+  MarketplaceName.Trader,
+  TraderNormalizedOrder
+>;
+
+export type LooksRareOrderResponse = Response<
+  MarketplaceName.LooksRare,
+  LooksRareNormalizedOrder
+>;
 
 export type OrderResponse =
   | OpenseaOrderResponse
@@ -132,34 +160,29 @@ export interface GetOrdersResponse {
   orders: OrderResponse[];
 }
 
-export interface OpenseaTakeOrderResponse extends OpenseaBase {
-  marketplaceResponse: string;
-}
+type OpenseaResponseData<D> = ResponseData<MarketplaceName.Opensea, D>;
+type TraderResponseData<D> = ResponseData<MarketplaceName.Trader, D>;
+type LooksRareResponseData<D> = ResponseData<MarketplaceName.LooksRare, D>;
 
-export interface TraderTakeOrderResponse extends TraderBase {
-  marketplaceResponse: ContractReceipt;
-}
+export type OpenseaTakeOrderResponse = OpenseaResponseData<string>;
 
-export interface LooksRareTakeOrderResponse extends LooksRareBase {
-  marketplaceResponse: _LooksRareContractReceipt;
-}
+export type TraderTakeOrderResponse = TraderResponseData<TraderContractReceipt>;
+
+export type LooksRareTakeOrderResponse =
+  LooksRareResponseData<_LooksRareContractReceipt>;
 
 export type TakeOrderResponse =
   | OpenseaTakeOrderResponse
   | TraderTakeOrderResponse
   | LooksRareTakeOrderResponse;
 
-export interface OpenseaCancelOrderResponse extends OpenseaBase {
-  marketplaceResponse: void;
-}
+export type OpenseaCancelOrderResponse = OpenseaResponseData<void>;
 
-export interface TraderCancelOrderResponse extends TraderBase {
-  marketplaceResponse: ContractTransaction;
-}
+export type TraderCancelOrderResponse =
+  TraderResponseData<TraderContractTransaction>;
 
-export interface LooksRareCancelOrderResponse extends LooksRareBase {
-  marketplaceResponse: _LooksRareContractReceipt;
-}
+export type LooksRareCancelOrderResponse =
+  LooksRareResponseData<_LooksRareContractReceipt>;
 
 export type CancelOrderResponse =
   | OpenseaCancelOrderResponse

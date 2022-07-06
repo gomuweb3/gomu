@@ -12,12 +12,12 @@ import {
 } from "./validators";
 
 import type {
+  Asset,
   Erc1155Asset,
   Erc20Asset,
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
-  NormalizedAsset,
   OpenseaNormalizedOrder,
 } from "../types";
 import type {
@@ -25,11 +25,7 @@ import type {
   OrdersQueryOptions,
   OrderSide,
 } from "opensea-js/lib/orders/types";
-import type {
-  Asset as _Asset,
-  OpenSeaAPIConfig,
-  OpenSeaAsset,
-} from "opensea-js/lib/types";
+import type { Asset as _Asset, OpenSeaAPIConfig } from "opensea-js/lib/types";
 import type { BigNumberInput } from "opensea-js/lib/utils/utils";
 
 export interface OpenseaConfig
@@ -42,6 +38,18 @@ export interface _OpenseaConfig extends OpenseaConfig {
 }
 
 export const openseaSupportedChainIds = [1, 4];
+
+// From: https://github.com/ProjectOpenSea/seaport-js/blob/556401030b1d4c72f3d836b5a3c587255ade9f4c/src/constants.ts#L47-L54
+// These are item type values returned by their API and present in all existing v2 orders and are
+// therefore unlikely to change
+enum ItemType {
+  NATIVE = 0,
+  ERC20 = 1,
+  ERC721 = 2,
+  ERC1155 = 3,
+  ERC721_WITH_CRITERIA = 4,
+  ERC1155_WITH_CRITERIA = 5,
+}
 
 export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
   private readonly seaport: OpenSeaPort;
@@ -231,39 +239,27 @@ function toUnitAmount(amount: bigint, decimals?: number): number {
     : Number(amount);
 }
 
-function normalizeAssets(assets: OpenSeaAsset[]): NormalizedAsset[] {
-  return assets.map((asset) => {
-    return {
-      contractAddress: asset.assetContract.address,
-      tokenId: asset.tokenId!,
-      type: asset.assetContract.schemaName,
-      amount: BigInt(1),
-    };
-  });
-}
-
-// Opensea OrderV2 contains price on root level, but payment token info in either maker or taker bundle
+// Opensea OrderV2 contains price on root level, but payment token info in either offer or consideration
 // for now we are working only with orders that use single erc20 payment token
 function normalizeOrder(order: OpenseaOriginalOrder): OpenseaNormalizedOrder {
   const isSellOrder = order.side === ORDER_SIDE_SELL;
+  const { consideration, offer, offerer } = order.protocolData.parameters;
+
   const erc20Asset = {
-    contractAddress: (isSellOrder
-      ? order.takerAssetBundle
-      : order.makerAssetBundle
-    ).assets[0].assetContract.address,
+    contractAddress: (isSellOrder ? consideration : offer)[0].token,
     type: "ERC20",
     amount: BigInt(order.currentPrice),
-  };
+  } as const;
+
+  const nftAssets = (isSellOrder ? offer : consideration)
+    .filter((asset) => asset.itemType !== ItemType.ERC20)
+    .map(determineNftAsset);
 
   return {
     id: order.orderHash!,
-    makerAssets: isSellOrder
-      ? normalizeAssets(order.makerAssetBundle.assets)
-      : [erc20Asset],
-    takerAssets: isSellOrder
-      ? [erc20Asset]
-      : normalizeAssets(order.takerAssetBundle.assets),
-    isSellOrder,
+    makerAssets: isSellOrder ? nftAssets : [erc20Asset],
+    takerAssets: isSellOrder ? [erc20Asset] : nftAssets,
+    maker: offerer,
     originalOrder: order,
   };
 }
@@ -291,4 +287,50 @@ interface CreateSellOrderParams {
   expirationTime?: BigNumberInput;
   paymentTokenAddress?: string;
   buyerAddress?: string;
+}
+
+function determineNftAsset({
+  token,
+  identifierOrCriteria,
+  itemType,
+  endAmount,
+}: {
+  token: string;
+  identifierOrCriteria: string;
+  itemType: number;
+  endAmount: string;
+}): Asset {
+  const contractAddress = token;
+  const tokenId = identifierOrCriteria;
+  const amount = BigInt(endAmount);
+
+  if (
+    itemType === ItemType.ERC721 ||
+    itemType === ItemType.ERC721_WITH_CRITERIA
+  ) {
+    return {
+      type: "ERC721",
+      contractAddress,
+      tokenId,
+    };
+  }
+
+  if (
+    itemType === ItemType.ERC1155 ||
+    itemType === ItemType.ERC1155_WITH_CRITERIA
+  ) {
+    return {
+      type: "ERC1155",
+      contractAddress,
+      tokenId,
+      amount: BigInt(amount),
+    };
+  }
+
+  return {
+    type: "Unknown",
+    contractAddress,
+    tokenId,
+    amount: BigInt(amount),
+  };
 }

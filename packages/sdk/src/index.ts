@@ -13,6 +13,7 @@ import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
 import type {
   Asset,
+  AnyAsset,
   CancelOrderResponse,
   Erc1155Asset,
   Erc20Asset,
@@ -27,7 +28,7 @@ import type {
   TakeOrderResponse,
 } from "./types";
 
-export type { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
+export type { Asset, AnyAsset, Erc20Asset, Erc721Asset, Erc1155Asset };
 
 export interface GomuConfig {
   provider: Web3Provider;
@@ -142,14 +143,14 @@ export class Gomu {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
               data: await marketplace.makeOrder(params),
-            };
+            } as OrderResponse;
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
               error: {
                 message: err instanceof Error ? err.message : `${err}`,
               },
-            };
+            } as OrderResponse;
           }
         })
     );
@@ -201,32 +202,44 @@ export class Gomu {
   async takeOrder(order: OrderResponse): Promise<TakeOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
+
     if (!marketplace) {
       throw new Error(`unknown marketplace: ${marketplaceName} order`);
     }
 
+    if (!("data" in order) || !order.data) {
+      throw new Error("order does not contain data");
+    }
+
+    // @ts-ignore
+    const data = await marketplace.takeOrder(order.data);
+
     // @ts-ignore
     return {
       marketplaceName,
-      // @ts-ignore
-      marketplaceResponse: await marketplace.takeOrder(order.data),
+      data,
     };
   }
 
   async cancelOrder(order: OrderResponse): Promise<CancelOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
+
     if (!marketplace) {
       throw new Error(`unknown marketplace: ${marketplaceName} order`);
     }
 
+    if (!("data" in order) || !order.data) {
+      throw new Error("order does not contain data");
+    }
+
+    // @ts-ignore
+    const data = await marketplace.cancelOrder(order.data);
+
     // @ts-ignore
     return {
       marketplaceName,
-      marketplaceResponse: await marketplace.cancelOrder(
-        // @ts-ignore
-        order.data
-      ),
+      data,
     };
   }
 }

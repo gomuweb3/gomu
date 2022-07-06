@@ -23,7 +23,7 @@ import type {
 import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
 import type {
   SearchOrdersParams,
-  PostOrderResponsePayload as TraderOriginalOrder,
+  PostOrderResponsePayload as TraderOrder,
 } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 
 export interface TraderConfig {
@@ -245,27 +245,50 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
   }
 }
 
-function normalizeOrder(order: TraderOriginalOrder): TraderNormalizedOrder {
+function normalizeOrder(order: TraderOrder): TraderNormalizedOrder {
   const isSellOrder = order.sellOrBuyNft === ORDER_SIDE_SELL;
-  const nftAsset = {
-    contractAddress: order.nftToken,
-    tokenId: order.nftTokenId,
-    type: order.nftType,
-    amount: BigInt(order.nftTokenAmount),
-  };
+
+  const nftAsset = determineNftAsset(order);
+
   const erc20Asset = {
     contractAddress: order.erc20Token,
     type: "ERC20",
     amount: BigInt(order.erc20TokenAmount),
-  };
+  } as const;
 
   return {
     id: order.order.nonce,
     makerAssets: isSellOrder ? [nftAsset] : [erc20Asset],
     takerAssets: isSellOrder ? [erc20Asset] : [nftAsset],
-    isSellOrder,
+    maker: order.order.maker,
     originalOrder: order,
   };
 }
 
-const ORDER_SIDE_SELL: TraderOriginalOrder["sellOrBuyNft"] = "sell";
+function determineNftAsset(order: TraderOrder): Asset {
+  if (order.nftType === "ERC721") {
+    return {
+      type: order.nftType,
+      contractAddress: order.nftToken,
+      tokenId: order.nftTokenId,
+    };
+  }
+
+  if (order.nftType === "ERC1155") {
+    return {
+      type: order.nftType,
+      contractAddress: order.nftToken,
+      tokenId: order.nftTokenId,
+      amount: BigInt(order.nftTokenAmount),
+    };
+  }
+
+  return {
+    type: "Unknown",
+    contractAddress: order.nftToken,
+    tokenId: order.nftTokenId,
+    amount: BigInt(order.nftTokenAmount),
+  };
+}
+
+const ORDER_SIDE_SELL: TraderOrder["sellOrBuyNft"] = "sell";
