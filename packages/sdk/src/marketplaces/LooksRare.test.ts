@@ -275,8 +275,6 @@ describe("LooksRare SDK", () => {
           let mockedGetNonce: jest.SpyInstance;
           let mockedPostOrder: jest.SpyInstance;
 
-          const mockOrderResult = "<POST_ORDER_RESULT>";
-
           beforeEach(() => {
             looksrare = new LooksRare({ apiKey, address, chainId, signer });
 
@@ -287,10 +285,6 @@ describe("LooksRare SDK", () => {
             mockedGetNonce = jest
               .spyOn(LooksRare.prototype as any, "getNonce")
               .mockReturnValue(mockNonce);
-
-            mockedPostOrder = jest
-              .spyOn(LooksRare.prototype as any, "postOrder")
-              .mockReturnValue(mockOrderResult);
           });
 
           afterEach(() => {
@@ -324,8 +318,22 @@ describe("LooksRare SDK", () => {
               params: [],
             };
 
-            await expect((await looksrare.makeOrder(args)).originalOrder).toBe(
-              mockOrderResult
+            const mockPostOrderResult = {
+              currencyAddress: expectedMakeOrderPayload.currency,
+              collectionAddress: expectedMakeOrderPayload.collection,
+              tokenId: expectedMakeOrderPayload.tokenId,
+              price: expectedMakeOrderPayload.price,
+              amount: expectedMakeOrderPayload.amount,
+            } as LooksRareOriginalOrder;
+
+            mockedPostOrder = jest
+              .spyOn(LooksRare.prototype as any, "postOrder")
+              .mockReturnValue(mockPostOrderResult);
+
+            const normalizedOrder = normalizeOrder(mockPostOrderResult);
+
+            await expect(looksrare.makeOrder(args)).resolves.toEqual(
+              normalizedOrder
             );
 
             expect(mockedSignMakerOrder).toHaveBeenCalledWith(
@@ -618,6 +626,11 @@ describe("LooksRare SDK", () => {
 
       it("should call exchange contract's cancelMultipleMakerOrders method with order nonces", async () => {
         const order = normalizeOrder({
+          currencyAddress: "<currecncy_address>",
+          collectionAddress: "<currecncy_address>",
+          tokenId: "<token_id>",
+          price: "1000",
+          amount: "1",
           nonce: mockNonce,
         } as LooksRareOriginalOrder);
         /** @ts-ignore */
