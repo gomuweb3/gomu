@@ -626,8 +626,8 @@ describe("LooksRare SDK", () => {
 
       it("should call exchange contract's cancelMultipleMakerOrders method with order nonces", async () => {
         const order = normalizeOrder({
-          currencyAddress: "<currecncy_address>",
-          collectionAddress: "<currecncy_address>",
+          currencyAddress: "<currency_address>",
+          collectionAddress: "<currency_address>",
           tokenId: "<token_id>",
           price: "1000",
           amount: "1",

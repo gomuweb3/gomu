@@ -108,16 +108,25 @@ export type TraderOrder = NormalizedOrder<TraderOriginalOrder>;
 
 export type LooksRareOrder = NormalizedOrder<LooksRareOriginalOrder>;
 
-interface ResponseData<N extends MarketplaceName, D> {
+interface ResponseBase<N extends MarketplaceName> {
   marketplaceName: N;
-  data?: D;
 }
 
-interface Response<N extends MarketplaceName, D> extends ResponseData<N, D> {
-  error?: {
+interface ResponseData<N extends MarketplaceName, D> extends ResponseBase<N> {
+  data: D;
+}
+
+interface ResponseError<N extends MarketplaceName> extends ResponseBase<N> {
+  error: {
     message: string;
   };
 }
+
+type Response<N extends MarketplaceName, D> = Merge<
+  ResponseData<N, D>,
+  ResponseError<N>
+> &
+  ResponseBase<N>;
 
 export type OpenseaOrderResponse = Response<
   MarketplaceName.Opensea,
