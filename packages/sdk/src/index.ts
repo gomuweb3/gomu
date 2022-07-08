@@ -13,22 +13,21 @@ import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
 import type {
   Asset,
+  AnyAsset,
   CancelOrderResponse,
   Erc1155Asset,
   Erc20Asset,
   Erc721Asset,
   GetOrdersParams,
-  GetOrdersResponse,
   MakeOrderParams,
   MakeSellOrderParams,
   MakeBuyOrderParams,
   MarketplaceName,
-  Order,
-  MakeOrderResponse,
+  OrderResponse,
   TakeOrderResponse,
 } from "./types";
 
-export type { Asset, Erc20Asset, Erc721Asset, Erc1155Asset };
+export type { Asset, AnyAsset, Erc20Asset, Erc721Asset, Erc1155Asset };
 
 export interface GomuConfig {
   provider: Web3Provider;
@@ -125,7 +124,7 @@ export class Gomu {
   async makeOrder({
     marketplaces,
     ...params
-  }: MakeOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeOrderParams): Promise<OrderResponse[]> {
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([marketplaceName, marketplace]) => {
@@ -142,12 +141,14 @@ export class Gomu {
           try {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              marketplaceOrder: await marketplace.makeOrder(params),
-            } as Order;
+              data: await marketplace.makeOrder(params),
+            };
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
-              error: err instanceof Error ? err.message : `${err}`,
+              error: {
+                message: formatError(err),
+              },
             };
           }
         })
@@ -158,7 +159,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeSellOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeSellOrderParams): Promise<OrderResponse[]> {
     return this.makeOrder({
       makerAssets: assets,
       takerAssets: [{ contractAddress, amount, type: "ERC20" }],
@@ -170,7 +171,7 @@ export class Gomu {
     assets,
     erc20Asset: { contractAddress, amount },
     ...params
-  }: MakeBuyOrderParams): Promise<MakeOrderResponse[]> {
+  }: MakeBuyOrderParams): Promise<OrderResponse[]> {
     return this.makeOrder({
       makerAssets: [{ contractAddress, amount, type: "ERC20" }],
       takerAssets: assets,
@@ -178,54 +179,84 @@ export class Gomu {
     });
   }
 
-  async getOrders(params?: GetOrdersParams): Promise<GetOrdersResponse> {
+  async getOrders(params?: GetOrdersParams): Promise<OrderResponse[]> {
     const orders = (
-      await Promise.all(
+      await Promise.all<Promise<OrderResponse[]>[]>(
         Object.entries(this.marketplaces)
           .filter(([_, marketplace]) => marketplace)
-          .map(async ([marketplaceName, marketplace]) => {
-            const orders = await marketplace.getOrders(params);
-            return orders.map((marketplaceOrder: any) => ({
-              marketplaceName,
-              marketplaceOrder,
-            }));
-          })
+          .map<Promise<OrderResponse[]>>(
+            async ([marketplaceName, marketplace]): Promise<
+              OrderResponse[]
+            > => {
+              try {
+                const orders = await marketplace.getOrders(params);
+                return orders.map((data: any) => ({
+                  marketplaceName,
+                  data,
+                }));
+              } catch (err) {
+                return [
+                  {
+                    marketplaceName: marketplaceName as MarketplaceName,
+                    error: {
+                      message: formatError(err),
+                    },
+                  },
+                ];
+              }
+            }
+          )
       )
     ).flat();
-    return {
-      orders,
-    };
+
+    return orders;
   }
 
-  async takeOrder(order: Order): Promise<TakeOrderResponse> {
+  async takeOrder(order: OrderResponse): Promise<TakeOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
+
     if (!marketplace) {
       throw new Error(`unknown marketplace: ${marketplaceName} order`);
     }
 
+    if (!("data" in order) || !order.data) {
+      throw new Error("order does not contain data");
+    }
+
+    // @ts-ignore
+    const data = await marketplace.takeOrder(order.data);
+
     // @ts-ignore
     return {
       marketplaceName,
-      // @ts-ignore
-      marketplaceResponse: await marketplace.takeOrder(order.marketplaceOrder),
+      data,
     };
   }
 
-  async cancelOrder(order: Order): Promise<CancelOrderResponse> {
+  async cancelOrder(order: OrderResponse): Promise<CancelOrderResponse> {
     const { marketplaceName } = order;
     const marketplace = this.marketplaces[marketplaceName];
+
     if (!marketplace) {
       throw new Error(`unknown marketplace: ${marketplaceName} order`);
     }
 
+    if (!("data" in order) || !order.data) {
+      throw new Error("order does not contain data");
+    }
+
+    // @ts-ignore
+    const data = await marketplace.cancelOrder(order.data);
+
     // @ts-ignore
     return {
       marketplaceName,
-      marketplaceResponse: await marketplace.cancelOrder(
-        // @ts-ignore
-        order.marketplaceOrder
-      ),
+      data,
     };
   }
+}
+
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : `${err}`;
 }

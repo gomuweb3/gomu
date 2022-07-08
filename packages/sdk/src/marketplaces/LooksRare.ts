@@ -36,6 +36,7 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
+  LooksRareOrder,
 } from "../types";
 
 export interface LooksRareConfig {
@@ -69,7 +70,7 @@ export enum Status {
   EXPIRED = "EXPIRED",
 }
 
-export interface MakeOrderResult {
+export interface LooksRareOriginalOrder {
   hash: string;
   collectionAddress: string;
   tokenId: string;
@@ -176,7 +177,7 @@ export const looksrareSupportedChainIds = [
   SupportedChainId.RINKEBY,
 ];
 
-export class LooksRare implements Marketplace<MakeOrderResult> {
+export class LooksRare implements Marketplace<LooksRareOrder> {
   private readonly apiKey: string | undefined;
   private readonly address: string;
   private readonly chainId: SupportedChainId;
@@ -205,7 +206,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<MakeOrderResult> {
+  }: MakeOrderParams): Promise<LooksRareOrder> {
     if (taker) {
       // We disable private sale for now
       // We will need to include ethers.js lib to support it because LooksRare uses it to verify address in params
@@ -292,33 +293,34 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       makerOrder
     );
 
-    /* @ts-ignore */
-    return this.postOrder({ ...makerOrder, signature });
+    const order = await this.postOrder({ ...makerOrder, signature });
+
+    return normalizeOrder(order);
   }
 
   /**
    * Creates and posts a TakerOrder to LooksRare exchange contract
    */
-  async takeOrder(makerOrder: MakeOrderResult): Promise<ContractReceipt> {
+  async takeOrder({ originalOrder }: LooksRareOrder): Promise<ContractReceipt> {
     const takerOrder: TakerOrderPayload = {
-      isOrderAsk: !makerOrder.isOrderAsk,
+      isOrderAsk: !originalOrder.isOrderAsk,
       taker: this.address,
-      price: makerOrder.price,
+      price: originalOrder.price,
       minPercentageToAsk: DEFAULT_MIN_PERCENTAGE_TO_ASK,
-      tokenId: makerOrder.tokenId,
+      tokenId: originalOrder.tokenId,
       params: [], // The typing expects an array even though we should be using a hex value here, I don't know why.
     };
 
     const parsedTakerOrder = {
       ...takerOrder,
-      params: makerOrder.params || DEFAULT_PARAMS_HEX,
+      params: originalOrder.params || DEFAULT_PARAMS_HEX,
     };
 
     const parsedMakerOrder = {
-      ...makerOrder,
-      collection: makerOrder.collectionAddress,
-      currency: makerOrder.currencyAddress,
-      params: makerOrder.params || DEFAULT_PARAMS_HEX,
+      ...originalOrder,
+      collection: originalOrder.collectionAddress,
+      currency: originalOrder.currencyAddress,
+      params: originalOrder.params || DEFAULT_PARAMS_HEX,
     };
 
     return takerOrder.isOrderAsk
@@ -340,7 +342,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<MakeOrderResult[]> {
+  }: GetOrdersParams = {}): Promise<LooksRareOrder[]> {
     const status = [Status.VALID];
     const sort = "NEWEST";
 
@@ -355,7 +357,9 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     };
 
     if (!makerAsset && !takerAsset) {
-      return this.fetchOrders(query);
+      const orders = await this.fetchOrders(query);
+
+      return orders.map(normalizeOrder);
     }
 
     let baseAsset: Erc721Asset | Erc1155Asset | undefined;
@@ -396,14 +400,16 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
 
     const result = await this.fetchOrders(query);
 
-    return result;
+    return result.map(normalizeOrder);
   }
 
   /**
    * Cancels order on LooksRare exchange contract.
    */
-  async cancelOrder(order: MakeOrderResult): Promise<ContractReceipt> {
-    return this.getExchangeContract().cancelMultipleMakerOrders([order.nonce]);
+  async cancelOrder(order: LooksRareOrder): Promise<ContractReceipt> {
+    return this.getExchangeContract().cancelMultipleMakerOrders([
+      order.originalOrder.nonce,
+    ]);
   }
 
   /**
@@ -444,7 +450,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
     endTime: number;
     minPercentageToAsk: number;
     params: unknown[];
-  }): Promise<MakeOrderResult> {
+  }): Promise<LooksRareOriginalOrder> {
     const res = await fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
@@ -455,7 +461,7 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
       body: JSON.stringify(payload),
     });
 
-    return this.parseApiResponse<MakeOrderResult>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder>(res);
   }
 
   /**
@@ -463,12 +469,12 @@ export class LooksRare implements Marketplace<MakeOrderResult> {
    */
   private async fetchOrders(
     params: FetchOrderParams
-  ): Promise<MakeOrderResult[]> {
+  ): Promise<LooksRareOriginalOrder[]> {
     const res = await fetch(
       this.getApiUrl(ApiPath.orders, parseFetchParams(params))
     );
 
-    return this.parseApiResponse<MakeOrderResult[]>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder[]>(res);
   }
 
   /**
@@ -546,4 +552,29 @@ function flattenFetchParamObj(
   return Object.entries(objValue).map(([key, value]) => {
     return [`${objName}[${key}]`, value];
   });
+}
+
+export function normalizeOrder(order: LooksRareOriginalOrder): LooksRareOrder {
+  const isSellOrder = order.isOrderAsk;
+
+  const nftAsset = {
+    type: "Unknown", // LooksRare orders api does not return type unfortunately
+    contractAddress: order.collectionAddress,
+    tokenId: order.tokenId,
+    amount: BigInt(order.amount),
+  } as const;
+
+  const erc20Asset = {
+    contractAddress: order.currencyAddress,
+    type: "ERC20",
+    amount: BigInt(order.price),
+  } as const;
+
+  return {
+    id: order.hash,
+    makerAssets: isSellOrder ? [nftAsset] : [erc20Asset],
+    takerAssets: isSellOrder ? [erc20Asset] : [nftAsset],
+    maker: order.signer,
+    originalOrder: order,
+  };
 }

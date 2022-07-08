@@ -9,7 +9,12 @@ import {
   assertAssetsIsNotErc721Erc1155AndErc721Erc115,
 } from "./validators";
 
-import type { Asset, GetOrdersParams, MakeOrderParams } from "../types";
+import type {
+  Asset,
+  GetOrdersParams,
+  MakeOrderParams,
+  TraderOrder,
+} from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
   ContractReceipt,
@@ -17,8 +22,8 @@ import type {
 } from "@ethersproject/contracts";
 import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
 import type {
-  PostOrderResponsePayload,
   SearchOrdersParams,
+  PostOrderResponsePayload as TraderOriginalOrder,
 } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 
 export interface TraderConfig {
@@ -36,7 +41,7 @@ export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
   .filter((key) => Number.isInteger(Number(key)))
   .map(Number);
 
-export class Trader implements Marketplace<PostOrderResponsePayload> {
+export class Trader implements Marketplace<TraderOrder> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
   private readonly address: string;
@@ -64,7 +69,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<PostOrderResponsePayload> {
+  }: MakeOrderParams): Promise<TraderOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -91,7 +96,13 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
       }
     );
     const signedOrder = await this.nftSwapSdk.signOrder(order);
-    return this.nftSwapSdk.postOrder(signedOrder, this.chainId.toString());
+
+    const postedOrder = await this.nftSwapSdk.postOrder(
+      signedOrder,
+      this.chainId.toString()
+    );
+
+    return normalizeOrder(postedOrder);
   }
 
   async getOrders({
@@ -99,7 +110,7 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<PostOrderResponsePayload[]> {
+  }: GetOrdersParams = {}): Promise<TraderOrder[]> {
     let filters: Partial<SearchOrdersParams> = {};
 
     if (makerAsset) {
@@ -119,28 +130,28 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     }
 
     const resp = await this.nftSwapSdk.getOrders(filters);
-    return resp.orders;
+    return resp.orders.map(normalizeOrder);
   }
 
-  async takeOrder(order: PostOrderResponsePayload): Promise<ContractReceipt> {
-    const signedOrder = order.order;
+  async takeOrder({ originalOrder }: TraderOrder): Promise<ContractReceipt> {
+    const signedOrder = originalOrder.order;
 
     let takerAsset: SwappableAssetV4;
-    if (order.sellOrBuyNft === "buy") {
+    if (originalOrder.sellOrBuyNft === "buy") {
       takerAsset = {
-        tokenAddress: order.nftToken,
-        tokenId: order.nftTokenId,
-        type: order.nftType as "ERC721" | "ERC1155",
-        amount: order.nftTokenAmount,
+        tokenAddress: originalOrder.nftToken,
+        tokenId: originalOrder.nftTokenId,
+        type: originalOrder.nftType as "ERC721" | "ERC1155",
+        amount: originalOrder.nftTokenAmount,
       };
-    } else if (order.sellOrBuyNft === "sell") {
+    } else if (originalOrder.sellOrBuyNft === "sell") {
       takerAsset = {
-        tokenAddress: order.erc20Token,
+        tokenAddress: originalOrder.erc20Token,
         type: "ERC20",
-        amount: order.erc20TokenAmount,
+        amount: originalOrder.erc20TokenAmount,
       };
     } else {
-      throw new Error(`unknown side: ${order.sellOrBuyNft}`);
+      throw new Error(`unknown side: ${originalOrder.sellOrBuyNft}`);
     }
 
     await this.approveAsset(takerAsset);
@@ -155,12 +166,12 @@ export class Trader implements Marketplace<PostOrderResponsePayload> {
     return fillTx.wait();
   }
 
-  async cancelOrder(
-    order: PostOrderResponsePayload
-  ): Promise<ContractTransaction> {
+  async cancelOrder({
+    originalOrder,
+  }: TraderOrder): Promise<ContractTransaction> {
     return this.nftSwapSdk.cancelOrder(
-      order.order.nonce,
-      order.nftType as "ERC721" | "ERC1155"
+      originalOrder.order.nonce,
+      originalOrder.nftType as "ERC721" | "ERC1155"
     );
   }
 
@@ -231,3 +242,51 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
       throw new Error(`unknown asset type: ${type}`);
   }
 }
+
+function normalizeOrder(order: TraderOriginalOrder): TraderOrder {
+  const isSellOrder = order.sellOrBuyNft === ORDER_SIDE_SELL;
+
+  const nftAsset = determineNftAsset(order);
+
+  const erc20Asset = {
+    contractAddress: order.erc20Token,
+    type: "ERC20",
+    amount: BigInt(order.erc20TokenAmount),
+  } as const;
+
+  return {
+    id: order.order.nonce,
+    makerAssets: isSellOrder ? [nftAsset] : [erc20Asset],
+    takerAssets: isSellOrder ? [erc20Asset] : [nftAsset],
+    maker: order.order.maker,
+    originalOrder: order,
+  };
+}
+
+function determineNftAsset(order: TraderOriginalOrder): Asset {
+  if (order.nftType === "ERC721") {
+    return {
+      type: order.nftType,
+      contractAddress: order.nftToken,
+      tokenId: order.nftTokenId,
+    };
+  }
+
+  if (order.nftType === "ERC1155") {
+    return {
+      type: order.nftType,
+      contractAddress: order.nftToken,
+      tokenId: order.nftTokenId,
+      amount: BigInt(order.nftTokenAmount),
+    };
+  }
+
+  return {
+    type: "Unknown",
+    contractAddress: order.nftToken,
+    tokenId: order.nftTokenId,
+    amount: BigInt(order.nftTokenAmount),
+  };
+}
+
+const ORDER_SIDE_SELL: TraderOriginalOrder["sellOrBuyNft"] = "sell";

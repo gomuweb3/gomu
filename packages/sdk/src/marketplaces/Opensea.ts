@@ -12,14 +12,16 @@ import {
 } from "./validators";
 
 import type {
+  Asset,
   Erc1155Asset,
   Erc20Asset,
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
+  OpenseaOrder,
 } from "../types";
 import type {
-  OrderV2 as Order,
+  OrderV2 as OpenseaOriginalOrder,
   OrdersQueryOptions,
   OrderSide,
 } from "opensea-js/lib/orders/types";
@@ -37,7 +39,19 @@ export interface _OpenseaConfig extends OpenseaConfig {
 
 export const openseaSupportedChainIds = [1, 4];
 
-export class Opensea implements Marketplace<Order> {
+// From: https://github.com/ProjectOpenSea/seaport-js/blob/556401030b1d4c72f3d836b5a3c587255ade9f4c/src/constants.ts#L47-L54
+// These are item type values returned by their API and present in all existing v2 orders and are
+// therefore unlikely to change
+enum ItemType {
+  NATIVE = 0,
+  ERC20 = 1,
+  ERC721 = 2,
+  ERC1155 = 3,
+  ERC721_WITH_CRITERIA = 4,
+  ERC1155_WITH_CRITERIA = 5,
+}
+
+export class Opensea implements Marketplace<OpenseaOrder> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
 
@@ -59,7 +73,7 @@ export class Opensea implements Marketplace<Order> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<Order> {
+  }: MakeOrderParams): Promise<OpenseaOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -72,7 +86,7 @@ export class Opensea implements Marketplace<Order> {
 
     let createOrder: (
       params: CreateBuyOrderParams | CreateSellOrderParams
-    ) => Promise<Order>;
+    ) => Promise<OpenseaOriginalOrder>;
     let baseAsset: Erc721Asset | Erc1155Asset;
     let quoteAsset: Erc20Asset;
 
@@ -119,7 +133,9 @@ export class Opensea implements Marketplace<Order> {
       params.expirationTime = Math.round(expirationTime.getTime() / 1000);
     }
 
-    return createOrder(params);
+    const order = await createOrder(params);
+
+    return normalizeOrder(order);
   }
 
   async getOrders({
@@ -127,7 +143,7 @@ export class Opensea implements Marketplace<Order> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<Order[]> {
+  }: GetOrdersParams = {}): Promise<OpenseaOrder[]> {
     const query: Omit<OrdersQueryOptions, "limit"> = {
       // https://github.com/ProjectOpenSea/opensea-js/blob/master/src/api.ts#L106 limit is currently omitted here
       protocol: "seaport",
@@ -145,7 +161,9 @@ export class Opensea implements Marketplace<Order> {
       const sellOrdersResp = await this.seaport.api.getOrders({
         ...query,
       });
-      return [...buyOrdersResp.orders, ...sellOrdersResp.orders];
+      return [...buyOrdersResp.orders, ...sellOrdersResp.orders].map(
+        normalizeOrder
+      );
     }
 
     let baseAsset: Erc721Asset | Erc1155Asset | undefined;
@@ -182,20 +200,20 @@ export class Opensea implements Marketplace<Order> {
     }
 
     const resp = await this.seaport.api.getOrders(query);
-    return resp.orders;
+    return resp.orders.map(normalizeOrder);
   }
   /* eslint-enable camelcase */
 
-  async takeOrder(order: Order): Promise<string> {
+  async takeOrder(order: OpenseaOrder): Promise<string> {
     return this.seaport.fulfillOrder({
-      order,
+      order: order.originalOrder,
       accountAddress: this.address,
     });
   }
 
-  async cancelOrder(order: Order): Promise<void> {
+  async cancelOrder(order: OpenseaOrder): Promise<void> {
     return this.seaport.cancelOrder({
-      order,
+      order: order.originalOrder,
       accountAddress: this.address,
     });
   }
@@ -221,6 +239,31 @@ function toUnitAmount(amount: bigint, decimals?: number): number {
     : Number(amount);
 }
 
+// Opensea OrderV2 contains price on root level, but payment token info in either offer or consideration
+// for now we are working only with orders that use single erc20 payment token
+function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrder {
+  const isSellOrder = order.side === ORDER_SIDE_SELL;
+  const { consideration, offer, offerer } = order.protocolData.parameters;
+
+  const erc20Asset = {
+    contractAddress: (isSellOrder ? consideration : offer)[0].token,
+    type: "ERC20",
+    amount: BigInt(order.currentPrice),
+  } as const;
+
+  const nftAssets = (isSellOrder ? offer : consideration)
+    .filter((asset) => asset.itemType !== ItemType.ERC20)
+    .map(determineNftAsset);
+
+  return {
+    id: order.orderHash!,
+    makerAssets: isSellOrder ? nftAssets : [erc20Asset],
+    takerAssets: isSellOrder ? [erc20Asset] : nftAssets,
+    maker: offerer,
+    originalOrder: order,
+  };
+}
+
 const ORDER_SIDE_BUY: OrderSide = "bid";
 
 const ORDER_SIDE_SELL: OrderSide = "ask";
@@ -244,4 +287,50 @@ interface CreateSellOrderParams {
   expirationTime?: BigNumberInput;
   paymentTokenAddress?: string;
   buyerAddress?: string;
+}
+
+function determineNftAsset({
+  token,
+  identifierOrCriteria,
+  itemType,
+  endAmount,
+}: {
+  token: string;
+  identifierOrCriteria: string;
+  itemType: number;
+  endAmount: string;
+}): Asset {
+  const contractAddress = token;
+  const tokenId = identifierOrCriteria;
+  const amount = BigInt(endAmount);
+
+  if (
+    itemType === ItemType.ERC721 ||
+    itemType === ItemType.ERC721_WITH_CRITERIA
+  ) {
+    return {
+      type: "ERC721",
+      contractAddress,
+      tokenId,
+    };
+  }
+
+  if (
+    itemType === ItemType.ERC1155 ||
+    itemType === ItemType.ERC1155_WITH_CRITERIA
+  ) {
+    return {
+      type: "ERC1155",
+      contractAddress,
+      tokenId,
+      amount: BigInt(amount),
+    };
+  }
+
+  return {
+    type: "Unknown",
+    contractAddress,
+    tokenId,
+    amount: BigInt(amount),
+  };
 }

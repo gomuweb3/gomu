@@ -12,7 +12,12 @@ import {
   nftAssetPermutations,
 } from "../test/mocks";
 
-import { LooksRare, Status } from "./LooksRare";
+import {
+  LooksRare,
+  Status,
+  LooksRareOriginalOrder,
+  normalizeOrder,
+} from "./LooksRare";
 
 const apiKey: string = "<API_KEY>";
 const address: string = "0xADDRESS";
@@ -270,8 +275,6 @@ describe("LooksRare SDK", () => {
           let mockedGetNonce: jest.SpyInstance;
           let mockedPostOrder: jest.SpyInstance;
 
-          const mockOrderResult = "<POST_ORDER_RESULT>";
-
           beforeEach(() => {
             looksrare = new LooksRare({ apiKey, address, chainId, signer });
 
@@ -282,10 +285,6 @@ describe("LooksRare SDK", () => {
             mockedGetNonce = jest
               .spyOn(LooksRare.prototype as any, "getNonce")
               .mockReturnValue(mockNonce);
-
-            mockedPostOrder = jest
-              .spyOn(LooksRare.prototype as any, "postOrder")
-              .mockReturnValue(mockOrderResult);
           });
 
           afterEach(() => {
@@ -319,8 +318,22 @@ describe("LooksRare SDK", () => {
               params: [],
             };
 
-            await expect(looksrare.makeOrder(args)).resolves.toBe(
-              mockOrderResult
+            const mockPostOrderResult = {
+              currencyAddress: expectedMakeOrderPayload.currency,
+              collectionAddress: expectedMakeOrderPayload.collection,
+              tokenId: expectedMakeOrderPayload.tokenId,
+              price: expectedMakeOrderPayload.price,
+              amount: expectedMakeOrderPayload.amount,
+            } as LooksRareOriginalOrder;
+
+            mockedPostOrder = jest
+              .spyOn(LooksRare.prototype as any, "postOrder")
+              .mockReturnValue(mockPostOrderResult);
+
+            const normalizedOrder = normalizeOrder(mockPostOrderResult);
+
+            await expect(looksrare.makeOrder(args)).resolves.toEqual(
+              normalizedOrder
             );
 
             expect(mockedSignMakerOrder).toHaveBeenCalledWith(
@@ -418,9 +431,9 @@ describe("LooksRare SDK", () => {
           params: mockMakerOrder.params || DEFAULT_PARAMS_HEX,
         };
 
-        await expect(looksrare.takeOrder(mockMakerOrder)).resolves.toBe(
-          mockContractCallReceipt
-        );
+        await expect(
+          looksrare.takeOrder(normalizeOrder(mockMakerOrder))
+        ).resolves.toBe(mockContractCallReceipt);
 
         expect(scenario.calledMethod).toBeCalledWith(
           expectedTakerOrder,
@@ -581,7 +594,7 @@ describe("LooksRare SDK", () => {
       ];
 
       describe.each(successScenarios)(`chain ${chainId}`, (scenario) => {
-        const fetchData = "<FETCH_DATA>";
+        const fetchData = [];
         const fetchResult = {
           success: true,
           data: fetchData,
@@ -592,7 +605,7 @@ describe("LooksRare SDK", () => {
         });
 
         it(`${scenario.message}`, async () => {
-          await expect(looksrare.getOrders(scenario.args)).resolves.toBe(
+          await expect(looksrare.getOrders(scenario.args)).resolves.toEqual(
             fetchData
           );
 
@@ -612,7 +625,14 @@ describe("LooksRare SDK", () => {
       });
 
       it("should call exchange contract's cancelMultipleMakerOrders method with order nonces", async () => {
-        const order = { nonce: mockNonce };
+        const order = normalizeOrder({
+          currencyAddress: "<currency_address>",
+          collectionAddress: "<currency_address>",
+          tokenId: "<token_id>",
+          price: "1000",
+          amount: "1",
+          nonce: mockNonce,
+        } as LooksRareOriginalOrder);
         /** @ts-ignore */
         await expect(looksrare.cancelOrder(order)).resolves.toBe(
           mockContractCallReceipt
