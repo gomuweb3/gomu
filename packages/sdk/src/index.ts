@@ -19,7 +19,6 @@ import type {
   Erc20Asset,
   Erc721Asset,
   GetOrdersParams,
-  GetOrdersResponse,
   MakeOrderParams,
   MakeSellOrderParams,
   MakeBuyOrderParams,
@@ -143,14 +142,14 @@ export class Gomu {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
               data: await marketplace.makeOrder(params),
-            } as OrderResponse;
+            };
           } catch (err) {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
               error: {
-                message: err instanceof Error ? err.message : `${err}`,
+                message: parseError(err),
               },
-            } as OrderResponse;
+            };
           }
         })
     );
@@ -180,23 +179,37 @@ export class Gomu {
     });
   }
 
-  async getOrders(params?: GetOrdersParams): Promise<GetOrdersResponse> {
+  async getOrders(params?: GetOrdersParams): Promise<OrderResponse[]> {
     const orders = (
-      await Promise.all(
+      await Promise.all<Promise<OrderResponse[]>[]>(
         Object.entries(this.marketplaces)
           .filter(([_, marketplace]) => marketplace)
-          .map(async ([marketplaceName, marketplace]) => {
-            const orders = await marketplace.getOrders(params);
-            return orders.map((data: any) => ({
-              marketplaceName,
-              data,
-            }));
-          })
+          .map<Promise<OrderResponse[]>>(
+            async ([marketplaceName, marketplace]): Promise<
+              OrderResponse[]
+            > => {
+              try {
+                const orders = await marketplace.getOrders(params);
+                return orders.map((data: any) => ({
+                  marketplaceName,
+                  data,
+                }));
+              } catch (err) {
+                return [
+                  {
+                    marketplaceName: marketplaceName as MarketplaceName,
+                    error: {
+                      message: parseError(err),
+                    },
+                  },
+                ];
+              }
+            }
+          )
       )
     ).flat();
-    return {
-      orders,
-    };
+
+    return orders;
   }
 
   async takeOrder(order: OrderResponse): Promise<TakeOrderResponse> {
@@ -242,4 +255,8 @@ export class Gomu {
       data,
     };
   }
+}
+
+function parseError(err: unknown): string {
+  return err instanceof Error ? err.message : `${err}`;
 }

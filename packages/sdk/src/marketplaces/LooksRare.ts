@@ -36,7 +36,7 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
-  LooksRareNormalizedOrder,
+  LooksRareOrder,
 } from "../types";
 
 export interface LooksRareConfig {
@@ -70,7 +70,7 @@ export enum Status {
   EXPIRED = "EXPIRED",
 }
 
-export interface LooksRareOrder {
+export interface LooksRareOriginalOrder {
   hash: string;
   collectionAddress: string;
   tokenId: string;
@@ -177,7 +177,7 @@ export const looksrareSupportedChainIds = [
   SupportedChainId.RINKEBY,
 ];
 
-export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
+export class LooksRare implements Marketplace<LooksRareOrder> {
   private readonly apiKey: string | undefined;
   private readonly address: string;
   private readonly chainId: SupportedChainId;
@@ -206,7 +206,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<LooksRareNormalizedOrder> {
+  }: MakeOrderParams): Promise<LooksRareOrder> {
     if (taker) {
       // We disable private sale for now
       // We will need to include ethers.js lib to support it because LooksRare uses it to verify address in params
@@ -301,9 +301,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
   /**
    * Creates and posts a TakerOrder to LooksRare exchange contract
    */
-  async takeOrder({
-    originalOrder,
-  }: LooksRareNormalizedOrder): Promise<ContractReceipt> {
+  async takeOrder({ originalOrder }: LooksRareOrder): Promise<ContractReceipt> {
     const takerOrder: TakerOrderPayload = {
       isOrderAsk: !originalOrder.isOrderAsk,
       taker: this.address,
@@ -344,7 +342,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<LooksRareNormalizedOrder[]> {
+  }: GetOrdersParams = {}): Promise<LooksRareOrder[]> {
     const status = [Status.VALID];
     const sort = "NEWEST";
 
@@ -408,7 +406,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
   /**
    * Cancels order on LooksRare exchange contract.
    */
-  async cancelOrder(order: LooksRareNormalizedOrder): Promise<ContractReceipt> {
+  async cancelOrder(order: LooksRareOrder): Promise<ContractReceipt> {
     return this.getExchangeContract().cancelMultipleMakerOrders([
       order.originalOrder.nonce,
     ]);
@@ -452,7 +450,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
     endTime: number;
     minPercentageToAsk: number;
     params: unknown[];
-  }): Promise<LooksRareOrder> {
+  }): Promise<LooksRareOriginalOrder> {
     const res = await fetch(this.getApiUrl(ApiPath.orders), {
       method: "POST",
       headers: {
@@ -463,7 +461,7 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
       body: JSON.stringify(payload),
     });
 
-    return this.parseApiResponse<LooksRareOrder>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder>(res);
   }
 
   /**
@@ -471,12 +469,12 @@ export class LooksRare implements Marketplace<LooksRareNormalizedOrder> {
    */
   private async fetchOrders(
     params: FetchOrderParams
-  ): Promise<LooksRareOrder[]> {
+  ): Promise<LooksRareOriginalOrder[]> {
     const res = await fetch(
       this.getApiUrl(ApiPath.orders, parseFetchParams(params))
     );
 
-    return this.parseApiResponse<LooksRareOrder[]>(res);
+    return this.parseApiResponse<LooksRareOriginalOrder[]>(res);
   }
 
   /**
@@ -556,9 +554,7 @@ function flattenFetchParamObj(
   });
 }
 
-export function normalizeOrder(
-  order: LooksRareOrder
-): LooksRareNormalizedOrder {
+export function normalizeOrder(order: LooksRareOriginalOrder): LooksRareOrder {
   const isSellOrder = order.isOrderAsk;
 
   const nftAsset = {

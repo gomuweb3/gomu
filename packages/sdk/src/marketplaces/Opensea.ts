@@ -18,7 +18,7 @@ import type {
   Erc721Asset,
   GetOrdersParams,
   MakeOrderParams,
-  OpenseaNormalizedOrder,
+  OpenseaOrder,
 } from "../types";
 import type {
   OrderV2 as OpenseaOriginalOrder,
@@ -51,7 +51,7 @@ enum ItemType {
   ERC1155_WITH_CRITERIA = 5,
 }
 
-export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
+export class Opensea implements Marketplace<OpenseaOrder> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
 
@@ -73,7 +73,7 @@ export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<OpenseaNormalizedOrder> {
+  }: MakeOrderParams): Promise<OpenseaOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -143,7 +143,7 @@ export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<OpenseaNormalizedOrder[]> {
+  }: GetOrdersParams = {}): Promise<OpenseaOrder[]> {
     const query: Omit<OrdersQueryOptions, "limit"> = {
       // https://github.com/ProjectOpenSea/opensea-js/blob/master/src/api.ts#L106 limit is currently omitted here
       protocol: "seaport",
@@ -204,14 +204,14 @@ export class Opensea implements Marketplace<OpenseaNormalizedOrder> {
   }
   /* eslint-enable camelcase */
 
-  async takeOrder(order: OpenseaNormalizedOrder): Promise<string> {
+  async takeOrder(order: OpenseaOrder): Promise<string> {
     return this.seaport.fulfillOrder({
       order: order.originalOrder,
       accountAddress: this.address,
     });
   }
 
-  async cancelOrder(order: OpenseaNormalizedOrder): Promise<void> {
+  async cancelOrder(order: OpenseaOrder): Promise<void> {
     return this.seaport.cancelOrder({
       order: order.originalOrder,
       accountAddress: this.address,
@@ -241,7 +241,7 @@ function toUnitAmount(amount: bigint, decimals?: number): number {
 
 // Opensea OrderV2 contains price on root level, but payment token info in either offer or consideration
 // for now we are working only with orders that use single erc20 payment token
-function normalizeOrder(order: OpenseaOriginalOrder): OpenseaNormalizedOrder {
+function normalizeOrder(order: OpenseaOriginalOrder): OpenseaOrder {
   const isSellOrder = order.side === ORDER_SIDE_SELL;
   const { consideration, offer, offerer } = order.protocolData.parameters;
 

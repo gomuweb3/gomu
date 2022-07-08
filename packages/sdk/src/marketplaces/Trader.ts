@@ -13,7 +13,7 @@ import type {
   Asset,
   GetOrdersParams,
   MakeOrderParams,
-  TraderNormalizedOrder,
+  TraderOrder,
 } from "../types";
 import type { Marketplace } from "./Marketplace";
 import type {
@@ -23,7 +23,7 @@ import type {
 import type { SwappableAssetV4 } from "@traderxyz/nft-swap-sdk";
 import type {
   SearchOrdersParams,
-  PostOrderResponsePayload as TraderOrder,
+  PostOrderResponsePayload as TraderOriginalOrder,
 } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 
 export interface TraderConfig {
@@ -41,7 +41,7 @@ export const traderSupportedChainIds = Object.keys(SupportedChainIdsV4)
   .filter((key) => Number.isInteger(Number(key)))
   .map(Number);
 
-export class Trader implements Marketplace<TraderNormalizedOrder> {
+export class Trader implements Marketplace<TraderOrder> {
   private readonly nftSwapSdk: NftSwapV4;
   private readonly chainId: number;
   private readonly address: string;
@@ -69,7 +69,7 @@ export class Trader implements Marketplace<TraderNormalizedOrder> {
     takerAssets,
     taker,
     expirationTime,
-  }: MakeOrderParams): Promise<TraderNormalizedOrder> {
+  }: MakeOrderParams): Promise<TraderOrder> {
     assertAssetsIsNotEmpty(makerAssets, "maker");
     assertAssetsIsNotEmpty(takerAssets, "taker");
     assertAssetsIsNotBundled(makerAssets);
@@ -110,7 +110,7 @@ export class Trader implements Marketplace<TraderNormalizedOrder> {
     maker,
     takerAsset,
     taker,
-  }: GetOrdersParams = {}): Promise<TraderNormalizedOrder[]> {
+  }: GetOrdersParams = {}): Promise<TraderOrder[]> {
     let filters: Partial<SearchOrdersParams> = {};
 
     if (makerAsset) {
@@ -133,9 +133,7 @@ export class Trader implements Marketplace<TraderNormalizedOrder> {
     return resp.orders.map(normalizeOrder);
   }
 
-  async takeOrder({
-    originalOrder,
-  }: TraderNormalizedOrder): Promise<ContractReceipt> {
+  async takeOrder({ originalOrder }: TraderOrder): Promise<ContractReceipt> {
     const signedOrder = originalOrder.order;
 
     let takerAsset: SwappableAssetV4;
@@ -170,7 +168,7 @@ export class Trader implements Marketplace<TraderNormalizedOrder> {
 
   async cancelOrder({
     originalOrder,
-  }: TraderNormalizedOrder): Promise<ContractTransaction> {
+  }: TraderOrder): Promise<ContractTransaction> {
     return this.nftSwapSdk.cancelOrder(
       originalOrder.order.nonce,
       originalOrder.nftType as "ERC721" | "ERC1155"
@@ -245,7 +243,7 @@ function getSwappableAssetV4(asset: Asset): SwappableAssetV4 {
   }
 }
 
-function normalizeOrder(order: TraderOrder): TraderNormalizedOrder {
+function normalizeOrder(order: TraderOriginalOrder): TraderOrder {
   const isSellOrder = order.sellOrBuyNft === ORDER_SIDE_SELL;
 
   const nftAsset = determineNftAsset(order);
@@ -265,7 +263,7 @@ function normalizeOrder(order: TraderOrder): TraderNormalizedOrder {
   };
 }
 
-function determineNftAsset(order: TraderOrder): Asset {
+function determineNftAsset(order: TraderOriginalOrder): Asset {
   if (order.nftType === "ERC721") {
     return {
       type: order.nftType,
@@ -291,4 +289,4 @@ function determineNftAsset(order: TraderOrder): Asset {
   };
 }
 
-const ORDER_SIDE_SELL: TraderOrder["sellOrBuyNft"] = "sell";
+const ORDER_SIDE_SELL: TraderOriginalOrder["sellOrBuyNft"] = "sell";

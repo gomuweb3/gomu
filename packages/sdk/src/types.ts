@@ -1,13 +1,13 @@
 import type {
-  LooksRareOrder,
+  LooksRareOriginalOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
 import type {
   ContractReceipt as TraderContractReceipt,
   ContractTransaction as TraderContractTransaction,
 } from "@ethersproject/contracts";
-import type { PostOrderResponsePayload as TraderOrder } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
-import type { OrderV2 as OpenseaOrder } from "opensea-js/lib/orders/types";
+import type { PostOrderResponsePayload as TraderOriginalOrder } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
+import type { OrderV2 as OpenseaOriginalOrder } from "opensea-js/lib/orders/types";
 
 export interface Erc20Asset {
   contractAddress: string;
@@ -94,13 +94,6 @@ export enum MarketplaceName {
   LooksRare = "looksrare",
 }
 
-export interface NormalizedAsset {
-  contractAddress: string;
-  tokenId?: string;
-  type?: string;
-  amount: bigint;
-}
-
 export interface NormalizedOrder<OriginalOrder> {
   id: string;
   makerAssets: Asset[];
@@ -109,39 +102,33 @@ export interface NormalizedOrder<OriginalOrder> {
   originalOrder: OriginalOrder;
 }
 
-export type OpenseaNormalizedOrder = NormalizedOrder<OpenseaOrder>;
+export type OpenseaOrder = NormalizedOrder<OpenseaOriginalOrder>;
 
-export type TraderNormalizedOrder = NormalizedOrder<TraderOrder>;
+export type TraderOrder = NormalizedOrder<TraderOriginalOrder>;
 
-export type LooksRareNormalizedOrder = NormalizedOrder<LooksRareOrder>;
+export type LooksRareOrder = NormalizedOrder<LooksRareOriginalOrder>;
 
-interface ResponseData<N, D> {
+interface ResponseData<N extends MarketplaceName, D> {
   marketplaceName: N;
-  data: D;
+  data?: D;
 }
 
-type Response<N, D> =
-  | ResponseData<N, D>
-  | {
-      marketplaceName: N;
-      error: {
-        message?: string;
-      };
-    };
+interface Response<N extends MarketplaceName, D> extends ResponseData<N, D> {
+  error?: {
+    message: string;
+  };
+}
 
 export type OpenseaOrderResponse = Response<
   MarketplaceName.Opensea,
-  OpenseaNormalizedOrder
+  OpenseaOrder
 >;
 
-export type TraderOrderResponse = Response<
-  MarketplaceName.Trader,
-  TraderNormalizedOrder
->;
+export type TraderOrderResponse = Response<MarketplaceName.Trader, TraderOrder>;
 
 export type LooksRareOrderResponse = Response<
   MarketplaceName.LooksRare,
-  LooksRareNormalizedOrder
+  LooksRareOrder
 >;
 
 export type OrderResponse =
@@ -154,10 +141,6 @@ export interface GetOrdersParams {
   makerAsset?: Asset;
   taker?: string;
   takerAsset?: Asset;
-}
-
-export interface GetOrdersResponse {
-  orders: OrderResponse[];
 }
 
 type OpenseaResponseData<D> = ResponseData<MarketplaceName.Opensea, D>;
