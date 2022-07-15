@@ -7,6 +7,11 @@ import {
 } from "./marketplaces/LooksRare";
 import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
 import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
+import {
+  TraderV3,
+  TraderV3Config,
+  traderV3SupportedChainIds,
+} from "./marketplaces/TraderV3";
 
 import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
@@ -34,6 +39,7 @@ export interface GomuConfig {
   openseaConfig?: OpenseaConfig;
   traderConfig?: TraderConfig;
   looksrareConfig?: LooksRareConfig;
+  traderV3Config?: TraderV3Config;
 }
 
 interface _GomuConfig extends GomuConfig {
@@ -46,6 +52,7 @@ interface Marketplaces {
   opensea?: Opensea;
   trader?: Trader;
   looksrare?: LooksRare;
+  traderV3?: TraderV3;
 }
 
 export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
@@ -55,6 +62,7 @@ export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
   looksrare: looksrareSupportedChainIds,
   opensea: openseaSupportedChainIds,
   trader: traderSupportedChainIds,
+  traderV3: traderV3SupportedChainIds,
 };
 
 export class Gomu {
@@ -65,6 +73,7 @@ export class Gomu {
     openseaConfig = {},
     traderConfig = {},
     looksrareConfig = {},
+    traderV3Config = {},
   }: GomuConfig): Promise<Gomu> {
     const signer = await provider.getSigner();
     const [address, chainId] = await Promise.all([
@@ -79,6 +88,7 @@ export class Gomu {
       openseaConfig,
       traderConfig,
       looksrareConfig,
+      traderV3Config,
     });
   }
 
@@ -90,6 +100,7 @@ export class Gomu {
     openseaConfig,
     traderConfig,
     looksrareConfig,
+    traderV3Config,
   }: _GomuConfig) {
     if (Opensea.supportsChainId(chainId)) {
       this.marketplaces.opensea = new Opensea({
@@ -114,6 +125,16 @@ export class Gomu {
     if (LooksRare.supportsChainId(chainId)) {
       this.marketplaces.looksrare = new LooksRare({
         ...looksrareConfig,
+        chainId,
+        address,
+        signer,
+      });
+    }
+
+    if (TraderV3.supportsChainId(chainId)) {
+      this.marketplaces.traderV3 = new TraderV3({
+        ...traderV3Config,
+        provider,
         chainId,
         address,
         signer,

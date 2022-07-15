@@ -1,10 +1,14 @@
+import { SignedOrder } from "@traderxyz/nft-swap-sdk";
+
+import { OrderBookOrder } from "./orderbooks/OrderBook";
+
 import type {
   LooksRareOriginalOrder,
   ContractReceipt as _LooksRareContractReceipt,
 } from "./marketplaces/LooksRare";
 import type {
-  ContractReceipt as TraderContractReceipt,
-  ContractTransaction as TraderContractTransaction,
+  ContractReceipt,
+  ContractTransaction,
 } from "@ethersproject/contracts";
 import type { PostOrderResponsePayload as TraderOriginalOrder } from "@traderxyz/nft-swap-sdk/dist/sdk/v4/orderbook";
 import type { OrderV2 as OpenseaOriginalOrder } from "opensea-js/lib/orders/types";
@@ -92,6 +96,7 @@ export enum MarketplaceName {
   Opensea = "opensea",
   Trader = "trader",
   LooksRare = "looksrare",
+  TraderV3 = "traderV3",
 }
 
 export interface NormalizedOrder<OriginalOrder> {
@@ -107,6 +112,8 @@ export type OpenseaOrder = NormalizedOrder<OpenseaOriginalOrder>;
 export type TraderOrder = NormalizedOrder<TraderOriginalOrder>;
 
 export type LooksRareOrder = NormalizedOrder<LooksRareOriginalOrder>;
+
+export type TraderV3Order = OrderBookOrder<SignedOrder>;
 
 interface ResponseBase<N extends MarketplaceName> {
   marketplaceName: N;
@@ -140,10 +147,16 @@ export type LooksRareOrderResponse = Response<
   LooksRareOrder
 >;
 
+export type TraderV3OrderResponse = Response<
+  MarketplaceName.TraderV3,
+  TraderV3Order
+>;
+
 export type OrderResponse =
   | OpenseaOrderResponse
   | TraderOrderResponse
-  | LooksRareOrderResponse;
+  | LooksRareOrderResponse
+  | TraderV3OrderResponse;
 
 export interface GetOrdersParams {
   maker?: string;
@@ -155,28 +168,35 @@ export interface GetOrdersParams {
 type OpenseaResponseData<D> = ResponseData<MarketplaceName.Opensea, D>;
 type TraderResponseData<D> = ResponseData<MarketplaceName.Trader, D>;
 type LooksRareResponseData<D> = ResponseData<MarketplaceName.LooksRare, D>;
+type TraderV3ResponseData<D> = ResponseData<MarketplaceName.TraderV3, D>;
 
 export type OpenseaTakeOrderResponse = OpenseaResponseData<string>;
 
-export type TraderTakeOrderResponse = TraderResponseData<TraderContractReceipt>;
+export type TraderTakeOrderResponse = TraderResponseData<ContractReceipt>;
 
 export type LooksRareTakeOrderResponse =
   LooksRareResponseData<_LooksRareContractReceipt>;
 
+export type TraderV3TakeOrderResponse = TraderV3ResponseData<ContractReceipt>;
+
 export type TakeOrderResponse =
   | OpenseaTakeOrderResponse
   | TraderTakeOrderResponse
-  | LooksRareTakeOrderResponse;
+  | LooksRareTakeOrderResponse
+  | TraderV3TakeOrderResponse;
 
 export type OpenseaCancelOrderResponse = OpenseaResponseData<void>;
 
-export type TraderCancelOrderResponse =
-  TraderResponseData<TraderContractTransaction>;
+export type TraderCancelOrderResponse = TraderResponseData<ContractTransaction>;
 
 export type LooksRareCancelOrderResponse =
   LooksRareResponseData<_LooksRareContractReceipt>;
 
+export type TraderV3CancelOrderResponse =
+  TraderV3ResponseData<ContractTransaction>;
+
 export type CancelOrderResponse =
   | OpenseaCancelOrderResponse
   | TraderCancelOrderResponse
-  | LooksRareCancelOrderResponse;
+  | LooksRareCancelOrderResponse
+  | TraderV3CancelOrderResponse;
