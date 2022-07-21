@@ -48,15 +48,17 @@ async function main(): Promise<void> {
   };
 
   // Make an order, across multiple marketplaces.
-  const order1 = await makerGomu.makeOrder({
+  const makeResponses1 = await makerGomu.makeOrder({
     makerAssets: [nftAsset],
     takerAssets: [erc20Asset],
   });
-  console.log("successfully made order:", order1);
+  const makeOrders1 = makeResponses1.filter((response) => response.data);
+  console.log("successfully made orders:", makeOrders1);
 
-  const { orders: orders1 } = await makerGomu.getOrders({
+  const responses1 = await makerGomu.getOrders({
     maker: makerWallet.address,
   });
+  const orders1 = responses1.filter((response) => response.data);
   console.log("retrieved orders:", orders1);
 
   // Oops, we forgot to specify the taker address and expiration time. Let's cancel them.
@@ -69,18 +71,20 @@ async function main(): Promise<void> {
   const expirationTime: Date = new Date();
   expirationTime.setDate(expirationTime.getDate() + 1);
 
-  const order2 = await makerGomu.makeOrder({
+  const makeResponses2 = await makerGomu.makeOrder({
     makerAssets: [nftAsset],
     takerAssets: [erc20Asset],
     taker: takerWallet.address,
     expirationTime,
   });
-  console.log("successfully made order:", order2);
+  const makeOrders2 = makeResponses2.filter((response) => response.data);
+  console.log("successfully made orders:", makeOrders2);
 
-  const { orders: orders2 } = await takerGomu.getOrders({
+  const responses2 = await takerGomu.getOrders({
     maker: makerWallet.address,
     taker: takerWallet.address,
   });
+  const orders2 = responses2.filter((response) => response.data);
   console.log("retrieved orders:", orders2);
 
   // Pick the first marketplace to take the order.
