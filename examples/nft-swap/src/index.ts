@@ -9,13 +9,14 @@ async function main(): Promise<void> {
 
   // Instantiate Gomu for maker using mnemonics
   const mnemonic = "<MAKER_MNEMONIC>";
-  const makerProvider = new HDWalletProvider({
+  const makerHDWalletProvider = new HDWalletProvider({
     mnemonic,
     url,
   });
-  const makerWallet = Wallet.fromMnemonic(mnemonic);
+  const makerProvider = new Web3Provider(makerHDWalletProvider);
+  const makerWallet = Wallet.fromMnemonic(mnemonic).connect(makerProvider);
   const makerGomu = new Gomu({
-    provider: new Web3Provider(makerProvider),
+    provider: makerProvider,
     signer: makerWallet,
     address: makerWallet.address,
     chainId,
@@ -23,13 +24,14 @@ async function main(): Promise<void> {
 
   // Instantiate Gomu for taker using private key
   const privateKey = "<TAKER_PRIVATE_KEY>";
-  const takerProvider = new HDWalletProvider({
+  const takerHDWalletProvider = new HDWalletProvider({
     privateKeys: [privateKey],
     url,
   });
-  const takerWallet = new Wallet(privateKey);
+  const takerProvider = new Web3Provider(takerHDWalletProvider);
+  const takerWallet = new Wallet(privateKey, takerProvider);
   const takerGomu = new Gomu({
-    provider: new Web3Provider(takerProvider),
+    provider: takerProvider,
     signer: takerWallet,
     address: takerWallet.address,
     chainId,
