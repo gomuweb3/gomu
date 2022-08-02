@@ -90,7 +90,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
 
     const signedOrder = await this.nftSwapSdk.signOrder(order, this.address);
 
-    const resp = await this.orderBook.makeOrder({
+    return this.orderBook.makeOrder({
       chainId: this.chainId.toString(),
       maker: this.address,
       makerAssets: _makerAssets,
@@ -98,8 +98,6 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
       taker,
       originalOrder: signedOrder,
     });
-
-    return resp.data;
   }
 
   async getOrders({
