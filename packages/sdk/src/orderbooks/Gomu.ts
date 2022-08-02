@@ -11,7 +11,7 @@ import {
 } from "./OrderBook";
 
 export class GomuOrderBook<SignedOrder> implements OrderBook<SignedOrder> {
-  private baseUrl: string = "https://api.gomu.com/commerce";
+  private baseUrl: string = "https://commerce-api.gomu.co";
 
   async getOrders(
     getOrdersParams?: GetOrdersParams
