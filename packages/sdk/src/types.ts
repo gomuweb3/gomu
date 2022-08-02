@@ -65,6 +65,20 @@ export type AnyAsset = Merge<
 > &
   Asset;
 
+interface Erc20FeeAsset extends Erc20Asset {
+  recipientAddress: string;
+}
+
+interface Erc721FeeAsset extends Erc721Asset {
+  recipientAddress: string;
+}
+
+interface Erc1155FeeAsset extends Erc1155Asset {
+  recipientAddress: string;
+}
+
+export type FeeAsset = Erc20FeeAsset | Erc721FeeAsset | Erc1155FeeAsset;
+
 export interface MakeOrderParams {
   /** Assets the user has */
   makerAssets: Asset[];
@@ -80,6 +94,12 @@ export interface MakeOrderParams {
 
   /** Selected marketplaces */
   marketplaces?: `${MarketplaceName}`[];
+
+  /** Fees payable by the maker */
+  makerFees?: FeeAsset[];
+
+  /** Fees payable by the taker */
+  takerFees?: FeeAsset[];
 }
 
 export type MakeSellOrderParams = Omit<

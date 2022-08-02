@@ -3,6 +3,10 @@ import { getAddress } from "@ethersproject/address";
 import { ContractReceipt, ContractTransaction } from "@ethersproject/contracts";
 import { BaseProvider } from "@ethersproject/providers";
 import {
+  convertAssetsToInternalFormat,
+  encodeAssetData,
+  encodeMultiAssetAssetData,
+  getAmountFromAsset,
   NftSwapV3,
   SignedOrder,
   SupportedChainIdsV3,
@@ -17,6 +21,7 @@ import {
 import {
   AnyAsset,
   Asset,
+  FeeAsset,
   GetOrdersParams,
   MakeOrderParams,
   TraderV3Order,
@@ -73,11 +78,15 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     takerAssets: _takerAssets,
     taker,
     expirationTime,
+    makerFees,
+    takerFees,
   }: MakeOrderParams): Promise<any> {
     const makerAssets = _makerAssets.map(getSwappableAssetV3);
     const takerAssets = _takerAssets.map(getSwappableAssetV3);
 
     await Promise.all(makerAssets.map(this.approveAsset));
+
+    const feeConfig = getFeeConfig({ makerFees, takerFees });
 
     const order = this.nftSwapSdk.buildOrder(
       makerAssets,
@@ -86,6 +95,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
       {
         ...(taker && { takerAddress: getAddress(taker) }),
         expiration: expirationTime,
+        ...feeConfig,
       }
     );
 
@@ -191,4 +201,76 @@ function getSwappableAssetV3(asset: Asset): SwappableAsset {
     default:
       throw new Error(`unknown asset type: ${type}`);
   }
+}
+
+function getFeeConfig({
+  makerFees = [],
+  takerFees = [],
+}: {
+  makerFees?: FeeAsset[];
+  takerFees?: FeeAsset[];
+}): {
+  feeRecipientAddress?: string;
+  makerFeeAssetData?: string;
+  takerFeeAssetData?: string;
+  makerFee?: string;
+  takerFee?: string;
+} {
+  const recipientAddresses = [
+    ...new Set(
+      makerFees
+        .map(byRecipientAddress)
+        .concat(takerFees.map(byRecipientAddress))
+    ),
+  ];
+  if (recipientAddresses.length > 1) {
+    throw new Error("cannot have more than 1 recipient address");
+  }
+
+  let feeRecipientAddress: string | undefined;
+  if (recipientAddresses.length === 1) {
+    feeRecipientAddress = recipientAddresses[0];
+  }
+
+  const { amount: makerFee, data: makerFeeAssetData } =
+    getFeeData(makerFees.map(getSwappableAssetV3)) || {};
+  const { amount: takerFee, data: takerFeeAssetData } =
+    getFeeData(takerFees.map(getSwappableAssetV3)) || {};
+
+  return {
+    feeRecipientAddress,
+    makerFeeAssetData,
+    takerFeeAssetData,
+    makerFee,
+    takerFee,
+  };
+}
+
+function byRecipientAddress(asset: FeeAsset): string {
+  return asset.recipientAddress;
+}
+
+function getFeeData(_assets: SwappableAsset[]): {
+  amount: string;
+  data: string;
+} | null {
+  if (!_assets.length) {
+    return null;
+  }
+
+  const assets = convertAssetsToInternalFormat(_assets);
+  if (assets.length === 1) {
+    const asset = assets[0];
+    return {
+      amount: getAmountFromAsset(asset),
+      data: encodeAssetData(asset, false),
+    };
+  }
+
+  const amounts = assets.map((asset) => getAmountFromAsset(asset));
+  const datas = assets.map((asset) => encodeAssetData(asset, true));
+  return {
+    amount: "1", // Needs to be 1 for multiasset wrapper amount (actual amounts are nested)
+    data: encodeMultiAssetAssetData(amounts, datas),
+  };
 }
