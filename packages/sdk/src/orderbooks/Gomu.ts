@@ -1,6 +1,7 @@
 import fetch from "isomorphic-unfetch";
 
 import { AnyAsset, Asset } from "../types";
+import { filterEmpty } from "../utils";
 
 import {
   GetOrdersParams,
@@ -19,11 +20,7 @@ export class GomuOrderBook<SignedOrder> implements OrderBook<SignedOrder> {
     let url = `${this.baseUrl}/orders`;
 
     if (getOrdersParams) {
-      const params = new URLSearchParams(
-        Object.fromEntries(
-          Object.entries(getOrdersParams).filter(([_, v]) => v)
-        )
-      );
+      const params = new URLSearchParams(filterEmpty(getOrdersParams));
       url += `?${params.toString()}`;
     }
 

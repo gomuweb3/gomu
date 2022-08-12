@@ -183,6 +183,7 @@ export interface GetOrdersParams {
   makerAsset?: Asset;
   taker?: string;
   takerAsset?: Asset;
+  status?: OrderStatus;
 }
 
 type OpenseaResponseData<D> = ResponseData<MarketplaceName.Opensea, D>;
@@ -220,3 +221,5 @@ export type CancelOrderResponse =
   | TraderCancelOrderResponse
   | LooksRareCancelOrderResponse
   | TraderV3CancelOrderResponse;
+
+export type OrderStatus = "open" | "filled" | "cancelled";

@@ -37,6 +37,7 @@ import type {
   GetOrdersParams,
   MakeOrderParams,
   LooksRareOrder,
+  OrderStatus,
 } from "../types";
 
 export interface LooksRareConfig {
@@ -342,8 +343,9 @@ export class LooksRare implements Marketplace<LooksRareOrder> {
     maker,
     takerAsset,
     taker,
+    status: orderStatus = "open",
   }: GetOrdersParams = {}): Promise<LooksRareOrder[]> {
-    const status = [Status.VALID];
+    const status = [getStatus(orderStatus)];
     const sort = "NEWEST";
 
     if (taker) {
@@ -577,4 +579,17 @@ export function normalizeOrder(order: LooksRareOriginalOrder): LooksRareOrder {
     maker: order.signer,
     originalOrder: order,
   };
+}
+
+function getStatus(status: OrderStatus): Status {
+  switch (status) {
+    case "open":
+      return Status.VALID;
+    case "filled":
+      return Status.EXECUTED;
+    case "cancelled":
+      return Status.CANCELLED;
+    default:
+      throw new Error(`unknown status: ${status}`);
+  }
 }
