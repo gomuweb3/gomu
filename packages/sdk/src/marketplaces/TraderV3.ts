@@ -113,6 +113,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
 
     const params: OrderBookGetOrdersParams = Object.fromEntries(
       Object.entries({
+        chainId: this.chainId.toString(),
         maker,
         makerContractAddress,
         makerTokenId,
