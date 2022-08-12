@@ -2,6 +2,8 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { BaseProvider } from "@ethersproject/providers";
 import { NftSwapV4, SupportedChainIdsV4 } from "@traderxyz/nft-swap-sdk";
 
+import { filterEmpty } from "../utils";
+
 import {
   assertAssetsIsNotBundled,
   assertAssetsIsNotEmpty,
@@ -110,23 +112,20 @@ export class Trader implements Marketplace<TraderOrder> {
     maker,
     takerAsset,
     taker,
+    status,
   }: GetOrdersParams = {}): Promise<TraderOrder[]> {
-    let filters: Partial<SearchOrdersParams> = {};
+    let filters: Partial<SearchOrdersParams> = filterEmpty({
+      maker,
+      taker,
+      status,
+    });
 
     if (makerAsset) {
       filters = addAssetFilters(filters, makerAsset);
     }
 
-    if (maker) {
-      filters.maker = maker;
-    }
-
     if (takerAsset) {
       filters = addAssetFilters(filters, takerAsset);
-    }
-
-    if (taker) {
-      filters.taker = taker;
     }
 
     const resp = await this.nftSwapSdk.getOrders(filters);

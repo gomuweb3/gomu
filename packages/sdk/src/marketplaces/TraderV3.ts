@@ -21,6 +21,7 @@ import {
   MakeOrderParams,
   TraderV3Order,
 } from "../types";
+import { filterEmpty } from "../utils";
 
 import { Marketplace } from "./Marketplace";
 
@@ -106,23 +107,23 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     maker,
     takerAsset,
     taker,
+    status,
   }: GetOrdersParams): Promise<any> {
     const { contractAddress: makerContractAddress, tokenId: makerTokenId } =
       (makerAsset as AnyAsset) ?? {};
     const { contractAddress: takerContractAddress, tokenId: takerTokenId } =
       (takerAsset as AnyAsset) ?? {};
 
-    const params: OrderBookGetOrdersParams = Object.fromEntries(
-      Object.entries({
-        chainId: this.chainId.toString(),
-        maker,
-        makerContractAddress,
-        makerTokenId,
-        taker,
-        takerContractAddress,
-        takerTokenId,
-      }).filter(([_, v]) => v)
-    );
+    const params: OrderBookGetOrdersParams = filterEmpty({
+      chainId: this.chainId.toString(),
+      maker,
+      makerContractAddress,
+      makerTokenId,
+      taker,
+      takerContractAddress,
+      takerTokenId,
+      status,
+    });
 
     const { data } = await this.orderBook.getOrders(params);
     return data;
