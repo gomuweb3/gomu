@@ -1,6 +1,7 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { Web3Provider } from "@ethersproject/providers";
 
+import { BalanceAsserter } from "./asserters/BalanceAsserter";
 import {
   LooksRare,
   looksrareSupportedChainIds,
@@ -66,6 +67,8 @@ export const SUPPORTED_CHAIN_IDS_BY_MARKETPLACE: Record<
 };
 
 export class Gomu {
+  private readonly provider;
+  private readonly address;
   readonly marketplaces: Marketplaces = {};
 
   static async new({
@@ -102,6 +105,9 @@ export class Gomu {
     looksrareConfig,
     traderV3Config,
   }: _GomuConfig) {
+    this.provider = provider;
+    this.address = address;
+
     if (Opensea.supportsChainId(chainId)) {
       this.marketplaces.opensea = new Opensea({
         ...openseaConfig,
@@ -146,6 +152,7 @@ export class Gomu {
     marketplaces,
     ...params
   }: MakeOrderParams): Promise<OrderResponse[]> {
+    await this.assertBalances(params.makerAssets);
     return Promise.all(
       Object.entries(this.marketplaces)
         .filter(([marketplaceName, marketplace]) => {
@@ -245,6 +252,8 @@ export class Gomu {
       throw new Error("order does not contain data");
     }
 
+    await this.assertBalances(order.data.takerAssets);
+
     // @ts-ignore
     const data = await marketplace.takeOrder(order.data);
 
@@ -275,6 +284,14 @@ export class Gomu {
       marketplaceName,
       data,
     };
+  }
+
+  private async assertBalances(assets: Asset[]): Promise<void> {
+    const asserter = new BalanceAsserter(this.provider);
+    for (const asset of assets) {
+      // eslint-disable-next-line no-await-in-loop
+      await asserter.assertBalance(this.address, asset);
+    }
   }
 }
 
