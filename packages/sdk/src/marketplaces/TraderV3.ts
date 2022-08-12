@@ -1,4 +1,5 @@
 import { Signer } from "@ethersproject/abstract-signer";
+import { getAddress } from "@ethersproject/address";
 import { ContractReceipt, ContractTransaction } from "@ethersproject/contracts";
 import { BaseProvider } from "@ethersproject/providers";
 import {
@@ -81,9 +82,9 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     const order = this.nftSwapSdk.buildOrder(
       makerAssets,
       takerAssets,
-      this.address,
+      getAddress(this.address),
       {
-        takerAddress: taker,
+        ...(taker && { takerAddress: getAddress(taker) }),
         expiration: expirationTime,
       }
     );
