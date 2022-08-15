@@ -30,9 +30,23 @@ import type {
   MarketplaceName,
   OrderResponse,
   TakeOrderResponse,
+  OpenseaOrderResponse,
+  TraderOrderResponse,
+  LooksRareOrderResponse,
+  TraderV3OrderResponse,
 } from "./types";
 
-export type { Asset, AnyAsset, Erc20Asset, Erc721Asset, Erc1155Asset };
+export type {
+  Asset,
+  AnyAsset,
+  Erc20Asset,
+  Erc721Asset,
+  Erc1155Asset,
+  OpenseaOrderResponse,
+  TraderOrderResponse,
+  LooksRareOrderResponse,
+  TraderV3OrderResponse,
+};
 
 export interface GomuConfig {
   provider: Web3Provider;
