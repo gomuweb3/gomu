@@ -185,6 +185,9 @@ export interface GetOrdersParams {
   taker?: string;
   takerAsset?: Asset;
   status?: OrderStatus;
+
+  /** Selected marketplaces */
+  marketplaces?: `${MarketplaceName}`[];
 }
 
 type OpenseaResponseData<D> = ResponseData<MarketplaceName.Opensea, D>;

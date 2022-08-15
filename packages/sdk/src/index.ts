@@ -5,6 +5,7 @@ import {
   LooksRare,
   looksrareSupportedChainIds,
 } from "./marketplaces/LooksRare";
+import { Marketplace } from "./marketplaces/Marketplace";
 import { Opensea, openseaSupportedChainIds } from "./marketplaces/Opensea";
 import { Trader, traderSupportedChainIds } from "./marketplaces/Trader";
 import {
@@ -161,18 +162,8 @@ export class Gomu {
     ...params
   }: MakeOrderParams): Promise<OrderResponse[]> {
     return Promise.all(
-      Object.entries(this.marketplaces)
-        .filter(([marketplaceName, marketplace]) => {
-          if (
-            marketplaces?.length &&
-            !marketplaces.includes(marketplaceName as MarketplaceName)
-          ) {
-            return false;
-          }
-
-          return Boolean(marketplace);
-        })
-        .map(async ([marketplaceName, marketplace]) => {
+      this.getMarketplaceEntries(marketplaces).map(
+        async ([marketplaceName, marketplace]) => {
           try {
             return {
               marketplaceName: marketplaceName as MarketplaceName,
@@ -187,7 +178,8 @@ export class Gomu {
               },
             };
           }
-        })
+        }
+      )
     );
   }
 
@@ -215,34 +207,32 @@ export class Gomu {
     });
   }
 
-  async getOrders(params?: GetOrdersParams): Promise<OrderResponse[]> {
+  async getOrders({ marketplaces, ...params }: GetOrdersParams = {}): Promise<
+    OrderResponse[]
+  > {
     const orders = (
       await Promise.all<Promise<OrderResponse[]>[]>(
-        Object.entries(this.marketplaces)
-          .filter(([_, marketplace]) => marketplace)
-          .map<Promise<OrderResponse[]>>(
-            async ([marketplaceName, marketplace]): Promise<
-              OrderResponse[]
-            > => {
-              try {
-                const orders = await marketplace.getOrders(params);
-                return orders.map((data: any) => ({
-                  marketplaceName,
-                  data,
-                }));
-              } catch (err) {
-                return [
-                  {
-                    marketplaceName: marketplaceName as MarketplaceName,
-                    error: {
-                      message: formatError(err),
-                      cause: err,
-                    },
+        this.getMarketplaceEntries(marketplaces).map<Promise<OrderResponse[]>>(
+          async ([marketplaceName, marketplace]): Promise<OrderResponse[]> => {
+            try {
+              const orders = await marketplace.getOrders(params);
+              return orders.map((data: any) => ({
+                marketplaceName,
+                data,
+              }));
+            } catch (err) {
+              return [
+                {
+                  marketplaceName: marketplaceName as MarketplaceName,
+                  error: {
+                    message: formatError(err),
+                    cause: err,
                   },
-                ];
-              }
+                },
+              ];
             }
-          )
+          }
+        )
       )
     ).flat();
 
@@ -291,6 +281,22 @@ export class Gomu {
       marketplaceName,
       data,
     };
+  }
+
+  private getMarketplaceEntries(
+    marketplaces?: `${MarketplaceName}`[]
+  ): [string, Marketplace<any>][] {
+    let marketplaceEntries = Object.entries(this.marketplaces);
+
+    if (marketplaces && marketplaces.length) {
+      marketplaceEntries = marketplaceEntries.filter(
+        ([marketplaceName, marketplace]) =>
+          marketplaces.includes(marketplaceName as MarketplaceName) &&
+          marketplace
+      );
+    }
+
+    return marketplaceEntries;
   }
 }
 
