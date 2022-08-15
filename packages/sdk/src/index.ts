@@ -169,6 +169,7 @@ export class Gomu {
               marketplaceName: marketplaceName as MarketplaceName,
               error: {
                 message: formatError(err),
+                cause: err,
               },
             };
           }
@@ -221,6 +222,7 @@ export class Gomu {
                     marketplaceName: marketplaceName as MarketplaceName,
                     error: {
                       message: formatError(err),
+                      cause: err,
                     },
                   },
                 ];
@@ -279,5 +281,13 @@ export class Gomu {
 }
 
 function formatError(err: unknown): string {
-  return err instanceof Error ? err.message : `${err}`;
+  if (Object.hasOwnProperty.call(err, "message")) {
+    return (err as { message: string }).message;
+  }
+
+  try {
+    return JSON.stringify(err);
+  } catch (_) {
+    return `${err}`;
+  }
 }
