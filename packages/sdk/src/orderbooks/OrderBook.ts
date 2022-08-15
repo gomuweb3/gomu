@@ -1,7 +1,5 @@
 import { NormalizedOrder } from "../types";
 
-import { GomuOrderBook } from "./Gomu";
-
 export interface OrderBookOrder<SignedOrder>
   extends NormalizedOrder<SignedOrder> {
   chainId: string;
