@@ -1,9 +1,11 @@
-import { NormalizedOrder } from "../types";
+import { FeeAsset, NormalizedOrder } from "../types";
 
 export interface OrderBookOrder<SignedOrder>
   extends NormalizedOrder<SignedOrder> {
   chainId: string;
   taker?: string;
+  makerFees?: FeeAsset[];
+  takerFees?: FeeAsset[];
 }
 
 export interface MakeOrderParams<SignedOrder>

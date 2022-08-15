@@ -104,6 +104,8 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
       takerAssets: _takerAssets,
       taker,
       originalOrder: signedOrder,
+      makerFees,
+      takerFees,
     });
   }
 
