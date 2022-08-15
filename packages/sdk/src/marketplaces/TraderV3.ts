@@ -30,9 +30,7 @@ import { filterEmpty } from "../utils";
 
 import { Marketplace } from "./Marketplace";
 
-export interface TraderV3Config {
-  gasLimit?: number;
-}
+export interface TraderV3Config {}
 
 export interface _TraderV3Config extends TraderV3Config {
   provider: BaseProvider;
@@ -50,7 +48,6 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
   private readonly nftSwapSdk: NftSwapV3;
   private readonly chainId: number;
   private readonly address: string;
-  private readonly gasLimit: number;
   private orderBook: OrderBook<SignedOrder>;
 
   constructor({
@@ -58,13 +55,11 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     chainId,
     address,
     signer,
-    gasLimit = 2000000,
     orderBook = new GomuOrderBook<SignedOrder>(),
   }: _TraderV3Config) {
     this.nftSwapSdk = new NftSwapV3(provider, signer, chainId);
     this.chainId = chainId;
     this.address = address;
-    this.gasLimit = gasLimit;
     this.orderBook = orderBook;
 
     this.approveAsset = this.approveAsset.bind(this);
@@ -147,13 +142,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
 
     await Promise.all(takerAssets.map(this.approveAsset));
 
-    const fillTx = await this.nftSwapSdk.fillSignedOrder(
-      signedOrder,
-      undefined,
-      {
-        gasLimit: this.gasLimit,
-      }
-    );
+    const fillTx = await this.nftSwapSdk.fillSignedOrder(signedOrder);
     return fillTx.wait();
   }
 
