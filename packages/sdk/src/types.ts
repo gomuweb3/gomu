@@ -146,6 +146,7 @@ interface ResponseData<N extends MarketplaceName, D> extends ResponseBase<N> {
 interface ResponseError<N extends MarketplaceName> extends ResponseBase<N> {
   error: {
     message: string;
+    cause: any;
   };
 }
 
