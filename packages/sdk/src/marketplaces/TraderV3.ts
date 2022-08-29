@@ -145,10 +145,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
   async takeOrder(order: TraderV3Order): Promise<ContractReceipt> {
     const { originalOrder: signedOrder } = order;
 
-    const takerAssets: SwappableAsset[] =
-      order.takerAssets.map(getSwappableAssetV3);
-
-    await Promise.all(takerAssets.map(this.approveAsset));
+    await Promise.all(order.takerAssets.map(this.approveAsset));
 
     const fillTx = await this.nftSwapSdk.fillSignedOrder(signedOrder);
     return fillTx.wait();
@@ -158,15 +155,18 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     return this.nftSwapSdk.cancelOrder(order.originalOrder);
   }
 
-  private async approveAsset(asset: SwappableAsset): Promise<void> {
+  async approveAsset(asset: Asset | SwappableAsset): Promise<void> {
+    const swappableAsset =
+      "tokenAddress" in asset ? asset : getSwappableAssetV3(asset);
+
     const approvalStatus = await this.nftSwapSdk.loadApprovalStatus(
-      asset,
+      swappableAsset,
       this.address
     );
 
     if (!approvalStatus.contractApproved) {
       const approvalTx = await this.nftSwapSdk.approveTokenOrNftByAsset(
-        asset,
+        swappableAsset,
         this.address
       );
       await approvalTx.wait();

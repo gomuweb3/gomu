@@ -174,15 +174,18 @@ export class Trader implements Marketplace<TraderOrder> {
     );
   }
 
-  private async approveAsset(asset: SwappableAssetV4): Promise<void> {
+  async approveAsset(asset: Asset | SwappableAssetV4): Promise<void> {
+    const swappableAsset =
+      "tokenAddress" in asset ? asset : getSwappableAssetV4(asset);
+
     const approvalStatus = await this.nftSwapSdk.loadApprovalStatus(
-      asset,
+      swappableAsset,
       this.address
     );
 
     if (!approvalStatus.contractApproved) {
       const approvalTx = await this.nftSwapSdk.approveTokenOrNftByAsset(
-        asset,
+        swappableAsset,
         this.address
       );
       await approvalTx.wait();

@@ -227,3 +227,22 @@ export type CancelOrderResponse =
   | TraderV3CancelOrderResponse;
 
 export type OrderStatus = "open" | "filled" | "cancelled";
+
+export interface AssetApprovalSuccessResponse {
+  marketplaceName: MarketplaceName;
+  data: {
+    approved: true;
+  };
+}
+
+export interface AssetApprovalErrorResponse {
+  marketplaceName: MarketplaceName;
+  error: {
+    message: string;
+    cause: unknown;
+  };
+}
+
+export type AssetApprovalResponse =
+  | AssetApprovalSuccessResponse
+  | AssetApprovalErrorResponse;

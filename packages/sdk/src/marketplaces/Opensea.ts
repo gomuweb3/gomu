@@ -1,9 +1,15 @@
+import { Signer } from "@ethersproject/abstract-signer";
+import { ExternalProvider, Web3Provider } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
 import { Network, OpenSeaPort, WyvernProtocol } from "opensea-js";
+import {
+  CONDUIT_KEYS_TO_CONDUIT,
+  CROSS_CHAIN_DEFAULT_CONDUIT_KEY,
+} from "opensea-js/lib/constants";
 import { WyvernSchemaName } from "opensea-js/lib/types";
-import Web3 from "web3";
 
 import { Marketplace } from "./Marketplace";
+import { approveAsset } from "./approval";
 import {
   assertAssetsIsNotBundled,
   assertAssetsIsNotEmpty,
@@ -32,9 +38,10 @@ export interface OpenseaConfig
   extends Exclude<OpenSeaAPIConfig, "networkName"> {}
 
 export interface _OpenseaConfig extends OpenseaConfig {
-  provider: Web3["currentProvider"];
+  provider: ExternalProvider;
   chainId: number;
   address: string;
+  signer: Signer;
 }
 
 export const openseaSupportedChainIds = [1, 4];
@@ -54,18 +61,60 @@ enum ItemType {
 export class Opensea implements Marketplace<OpenseaOrder> {
   private readonly seaport: OpenSeaPort;
   private readonly address: string;
+  private readonly provider: ExternalProvider;
+  private readonly signer: Signer;
+  private readonly chainId: number;
 
-  constructor({ provider, chainId, address, ...otherConfig }: _OpenseaConfig) {
+  constructor({
+    provider,
+    chainId,
+    address,
+    signer,
+    ...otherConfig
+  }: _OpenseaConfig) {
     // @ts-ignore
     this.seaport = new OpenSeaPort(provider, {
       ...otherConfig,
       networkName: Opensea.getNetwork(chainId),
     });
     this.address = address;
+    this.provider = provider;
+    this.signer = signer;
+    this.chainId = chainId;
   }
 
   static supportsChainId(chainId: number): boolean {
     return openseaSupportedChainIds.includes(chainId);
+  }
+
+  async approveAsset(
+    asset: Asset,
+    overrides?: { contractAddress?: string }
+  ): Promise<void> {
+    // OpenSea SDK uses seaport SDK in the background, which has a very convoluted process of
+    // checking wallet balance and amount approved for each token that is initiated during order creation.
+    // (They have a very long chain of calls for getting both balances and approvals in one RPC call and then checking
+    // only either for approvals or balances)
+    // The checks involves checking amount approved on conduit contract that's supposed to handle the transfer.
+    // Lastly, all of these are marked as private methods so it's not safe to call them directly here; we have to re-implement.
+
+    // Note: atm it seems OpenSea is using only one conduit address (no distinction between mainnet and testnet)
+    // Surprisingly it works on testnet (I supposed they managed to deploy both contracts using the same account and nonce)
+    // Init Seaport SDK with conduit map: https://github.com/ProjectOpenSea/opensea-js/blob/e1dfb4cac70e34cac0ed2702facb179c55c190a5/src/sdk.ts#L226-L228
+    // Approval on Seaport SDK: https://github.com/ProjectOpenSea/seaport-js/blob/556401030b1d4c72f3d836b5a3c587255ade9f4c/src/seaport.ts#L258-L264
+    // (operator is the default conduit)
+    const conduitAddress =
+      overrides?.contractAddress ||
+      CONDUIT_KEYS_TO_CONDUIT[CROSS_CHAIN_DEFAULT_CONDUIT_KEY];
+
+    return approveAsset({
+      walletAddress: this.address,
+      contractAddress: conduitAddress,
+      asset,
+      provider: new Web3Provider(this.provider),
+      signer: this.signer,
+      chainId: this.chainId,
+    });
   }
 
   async makeOrder({

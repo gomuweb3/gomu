@@ -1,6 +1,12 @@
-import type { GetOrdersParams, MakeOrderParams } from "../types";
+import type { Asset, GetOrdersParams, MakeOrderParams } from "../types";
 
 export interface Marketplace<OrderData> {
+  approveAsset(
+    asset: Asset,
+    overrides: { contractAddress?: string }
+  ): Promise<void>;
+  approveAsset(asset: Asset): Promise<void>;
+
   makeOrder({
     makerAssets,
     takerAssets,
