@@ -157,24 +157,6 @@ export interface ContractReceipt {
   chainId: number;
 }
 
-interface CollectionResult {
-  address: string;
-  owner: string;
-  name: string;
-  description: string;
-  symbol: string;
-  type: "ERC721" | "ERC1155";
-  websiteLink: string;
-  facebookLink: string;
-  twitterLink: string;
-  instagramLink: string;
-  telegramLink: string;
-  mediumLink: string;
-  discordLink: string;
-  isVerified: boolean;
-  isExplicit: boolean;
-}
-
 const API_ORIGIN: Record<SupportedChainId, string> = {
   [SupportedChainId.HARDHAT]: "http://localhost",
   [SupportedChainId.MAINNET]: "https://api.looksrare.org",
@@ -535,15 +517,6 @@ export class LooksRare implements Marketplace<LooksRareOrder> {
     );
 
     return this.parseApiResponse<LooksRareOriginalOrder[]>(res);
-  }
-
-  /**
-   * Fetches data about collection from LooksRare API.
-   */
-  private async fetchCollection(address: string): Promise<CollectionResult> {
-    const res = await fetch(this.getApiUrl(ApiPath.collections, { address }));
-
-    return this.parseApiResponse<CollectionResult>(res);
   }
 
   /**
