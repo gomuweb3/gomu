@@ -12,7 +12,6 @@ import {
   SupportedChainIdsV3,
   SwappableAsset,
 } from "@traderxyz/nft-swap-sdk";
-import { DEFAUTLT_GAS_BUFFER_MULTIPLES } from "@traderxyz/nft-swap-sdk/dist/utils/v3/gas-buffer";
 
 import { GomuOrderBook } from "../orderbooks/Gomu";
 import {
@@ -58,12 +57,13 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     signer,
     orderBook = new GomuOrderBook<SignedOrder>(),
   }: _TraderV3Config) {
-    this.nftSwapSdk = new NftSwapV3(provider, signer, chainId, {
-      gasBufferMultiples: {
-        ...DEFAUTLT_GAS_BUFFER_MULTIPLES,
-        [SupportedChainIdsV3.Mainnet]: 1.2,
-      },
-    });
+    this.nftSwapSdk = new NftSwapV3(provider, signer, chainId);
+    // We reset the gas buffer here instead of using init config because we cannot import the default gas multiples
+    // from the lib as webpack projects will fail to compile the import.
+    this.nftSwapSdk.gasBufferMultiples = {
+      ...this.nftSwapSdk.gasBufferMultiples,
+      [SupportedChainIdsV3.Mainnet]: 1.2,
+    };
     this.chainId = chainId;
     this.address = address;
     this.orderBook = orderBook;
@@ -145,10 +145,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
   async takeOrder(order: TraderV3Order): Promise<ContractReceipt> {
     const { originalOrder: signedOrder } = order;
 
-    const takerAssets: SwappableAsset[] =
-      order.takerAssets.map(getSwappableAssetV3);
-
-    await Promise.all(takerAssets.map(this.approveAsset));
+    await Promise.all(order.takerAssets.map(this.approveAsset));
 
     const fillTx = await this.nftSwapSdk.fillSignedOrder(signedOrder);
     return fillTx.wait();
@@ -158,15 +155,18 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     return this.nftSwapSdk.cancelOrder(order.originalOrder);
   }
 
-  private async approveAsset(asset: SwappableAsset): Promise<void> {
+  async approveAsset(asset: Asset | SwappableAsset): Promise<void> {
+    const swappableAsset =
+      "tokenAddress" in asset ? asset : getSwappableAssetV3(asset);
+
     const approvalStatus = await this.nftSwapSdk.loadApprovalStatus(
-      asset,
+      swappableAsset,
       this.address
     );
 
     if (!approvalStatus.contractApproved) {
       const approvalTx = await this.nftSwapSdk.approveTokenOrNftByAsset(
-        asset,
+        swappableAsset,
         this.address
       );
       await approvalTx.wait();

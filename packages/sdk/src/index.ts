@@ -20,6 +20,7 @@ import type { TraderConfig } from "./marketplaces/Trader";
 import type {
   Asset,
   AnyAsset,
+  AssetApprovalResponse,
   CancelOrderResponse,
   Erc1155Asset,
   Erc20Asset,
@@ -124,6 +125,7 @@ export class Gomu {
         provider: provider.provider,
         chainId,
         address,
+        signer,
       });
     }
 
@@ -140,6 +142,7 @@ export class Gomu {
     if (LooksRare.supportsChainId(chainId)) {
       this.marketplaces.looksrare = new LooksRare({
         ...looksrareConfig,
+        provider,
         chainId,
         address,
         signer,
@@ -155,6 +158,26 @@ export class Gomu {
         signer,
       });
     }
+  }
+
+  async approveAssets(
+    assets: Asset | Asset[],
+    config?: {
+      marketplaces: `${MarketplaceName}`[];
+    }
+  ): Promise<AssetApprovalResponse[]> {
+    const marketplaces = config?.marketplaces;
+
+    return Promise.all(
+      this.getMarketplaceEntries(marketplaces).map(
+        ([marketplaceName, marketplace]) =>
+          approveAssetsForMarketplace({
+            marketplaceName: marketplaceName as MarketplaceName,
+            marketplace,
+            assets,
+          })
+      )
+    );
   }
 
   async makeOrder({
@@ -297,6 +320,39 @@ export class Gomu {
     }
 
     return marketplaceEntries;
+  }
+}
+
+async function approveAssetsForMarketplace({
+  marketplaceName,
+  marketplace,
+  assets,
+}: {
+  marketplaceName: MarketplaceName;
+  marketplace: Marketplace<OrderResponse["data"]>;
+  assets: Asset | Asset[];
+}): Promise<AssetApprovalResponse> {
+  try {
+    if (Array.isArray(assets)) {
+      await Promise.all(assets.map((asset) => marketplace.approveAsset(asset)));
+    } else {
+      await marketplace.approveAsset(assets);
+    }
+
+    return {
+      marketplaceName: marketplaceName as MarketplaceName,
+      data: {
+        approved: true,
+      },
+    };
+  } catch (err) {
+    return {
+      marketplaceName: marketplaceName as MarketplaceName,
+      error: {
+        message: formatError(err),
+        cause: err,
+      },
+    };
   }
 }
 
