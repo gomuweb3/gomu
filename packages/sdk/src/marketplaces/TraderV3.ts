@@ -58,15 +58,15 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     orderBook = new GomuOrderBook<SignedOrder>(),
   }: _TraderV3Config) {
     this.nftSwapSdk = new NftSwapV3(provider, signer, chainId);
-    this.chainId = chainId;
-    this.address = address;
-    this.orderBook = orderBook;
     // We reset the gas buffer here instead of using init config because we cannot import the default gas multiples
     // from the lib as webpack projects will fail to compile the import.
     this.nftSwapSdk.gasBufferMultiples = {
       ...this.nftSwapSdk.gasBufferMultiples,
       [SupportedChainIdsV3.Mainnet]: 1.2,
     };
+    this.chainId = chainId;
+    this.address = address;
+    this.orderBook = orderBook;
 
     this.approveAsset = this.approveAsset.bind(this);
   }
