@@ -112,6 +112,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
       originalOrder: signedOrder,
       makerFees,
       takerFees,
+      expirationTime,
     });
   }
 

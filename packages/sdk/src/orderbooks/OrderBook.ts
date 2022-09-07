@@ -6,6 +6,7 @@ export interface OrderBookOrder<SignedOrder>
   taker?: string;
   makerFees?: FeeAsset[];
   takerFees?: FeeAsset[];
+  expirationTime?: Date;
 }
 
 export interface MakeOrderParams<SignedOrder>
