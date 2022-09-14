@@ -30,14 +30,15 @@ import { filterEmpty } from "../utils";
 
 import { Marketplace } from "./Marketplace";
 
-export interface TraderV3Config {}
+export interface TraderV3Config {
+  orderBook?: OrderBook<SignedOrder>;
+}
 
 export interface _TraderV3Config extends TraderV3Config {
   provider: BaseProvider;
   chainId: number;
   address: string;
   signer: Signer;
-  orderBook?: OrderBook<SignedOrder>;
 }
 
 export const traderV3SupportedChainIds = Object.keys(SupportedChainIdsV3)
@@ -55,7 +56,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     chainId,
     address,
     signer,
-    orderBook = new GomuOrderBook<SignedOrder>(),
+    orderBook,
   }: _TraderV3Config) {
     this.nftSwapSdk = new NftSwapV3(provider, signer, chainId);
     // We reset the gas buffer here instead of using init config because we cannot import the default gas multiples
@@ -66,7 +67,7 @@ export class TraderV3 implements Marketplace<TraderV3Order> {
     };
     this.chainId = chainId;
     this.address = address;
-    this.orderBook = orderBook;
+    this.orderBook = orderBook || new GomuOrderBook<SignedOrder>();
 
     this.approveAsset = this.approveAsset.bind(this);
   }

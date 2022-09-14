@@ -11,20 +11,40 @@ import {
   OrderBook,
 } from "./OrderBook";
 
+export interface GomuOrderBookConfig {
+  apiKey?: string;
+  apiBaseUrl?: string;
+}
+
 export class GomuOrderBook<SignedOrder> implements OrderBook<SignedOrder> {
-  private baseUrl: string = "https://commerce-api.gomu.co";
+  private readonly apiKey?: string;
+  private readonly apiBaseUrl: string;
+
+  constructor({
+    apiKey,
+    apiBaseUrl = "https://commerce-api.gomu.co",
+  }: GomuOrderBookConfig = {}) {
+    this.apiKey = apiKey;
+    this.apiBaseUrl = apiBaseUrl;
+  }
 
   async getOrders(
     getOrdersParams?: GetOrdersParams
   ): Promise<GetOrdersResponse<SignedOrder>> {
-    let url = `${this.baseUrl}/orders`;
+    let url = `${this.apiBaseUrl}/orders`;
 
     if (getOrdersParams) {
       const params = new URLSearchParams(filterEmpty(getOrdersParams));
       url += `?${params.toString()}`;
     }
 
-    const resp = await fetch(url);
+    const resp = await fetch(url, {
+      ...(this.apiKey && {
+        headers: {
+          "gomu-api-key": this.apiKey,
+        },
+      }),
+    });
     return resp.json();
   }
 
@@ -42,9 +62,12 @@ export class GomuOrderBook<SignedOrder> implements OrderBook<SignedOrder> {
       (key, value) => (typeof value === "bigint" ? value.toString() : value)
     );
 
-    const resp = await fetch(`${this.baseUrl}/orders`, {
+    const resp = await fetch(`${this.apiBaseUrl}/orders`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.apiKey && { "gomu-api-key": this.apiKey }),
+      },
       body,
     });
     return resp.json();

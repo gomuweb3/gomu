@@ -14,6 +14,8 @@ import {
   traderV3SupportedChainIds,
 } from "./marketplaces/TraderV3";
 
+export { GomuOrderBook, GomuOrderBookConfig } from "./orderbooks/Gomu";
+
 import type { LooksRareConfig } from "./marketplaces/LooksRare";
 import type { OpenseaConfig } from "./marketplaces/Opensea";
 import type { TraderConfig } from "./marketplaces/Trader";
