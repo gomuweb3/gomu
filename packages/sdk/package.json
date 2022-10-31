@@ -28,7 +28,7 @@
     "@traderxyz/nft-swap-sdk": "^0.23.0",
     "bignumber.js": "^9.0.2",
     "isomorphic-unfetch": "^3.1.0",
-    "opensea-js": "4.0.3",
+    "opensea-js": "4.0.7",
     "web3": "^1.7.3"
   },
   "publishConfig": {
