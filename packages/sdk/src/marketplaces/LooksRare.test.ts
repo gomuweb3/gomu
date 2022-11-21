@@ -22,11 +22,12 @@ import {
 const apiKey: string = "<API_KEY>";
 const address: string = "0xADDRESS";
 const chainId: number = 1;
+const provider: any = "<PROVIDER>";
 const signer: any = "<SIGNER>";
 const mockOrderSignature: string = "<SIGNATURE>";
 const mockNonce = "1";
 
-const supportedChainIds = [1, 4];
+const supportedChainIds = [1, 5];
 const exampleUnsupportedChainIds = [2, 3];
 
 const DAY = 60 * 60 * 24;
@@ -40,7 +41,7 @@ const DEFAULT_PARAMS_HEX = "0x";
 const API_ORIGIN: Record<SupportedChainId, string> = {
   [SupportedChainId.HARDHAT]: "http://localhost",
   [SupportedChainId.MAINNET]: "https://api.looksrare.org",
-  [SupportedChainId.RINKEBY]: "https://api-rinkeby.looksrare.org",
+  [SupportedChainId.GOERLI]: "https://goerli.looksrare.org",
 };
 
 jest.mock("@looksrare/sdk");
@@ -89,7 +90,7 @@ describe("LooksRare SDK", () => {
 
   describe("instantiation", () => {
     function initLooksRareSDK(chainId: number): LooksRare {
-      return new LooksRare({ apiKey, address, chainId, signer });
+      return new LooksRare({ apiKey, address, chainId, signer, provider });
     }
 
     for (const chainId of supportedChainIds) {
@@ -122,7 +123,13 @@ describe("LooksRare SDK", () => {
   describe("makeOrder", () => {
     describe("failure", () => {
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       it("should reject with taker specified because we are not yet supporting it", async () => {
@@ -276,7 +283,13 @@ describe("LooksRare SDK", () => {
           let mockedPostOrder: jest.SpyInstance;
 
           beforeEach(() => {
-            looksrare = new LooksRare({ apiKey, address, chainId, signer });
+            looksrare = new LooksRare({
+              apiKey,
+              address,
+              chainId,
+              signer,
+              provider,
+            });
 
             mockedFetchOrder = jest
               .spyOn(LooksRare.prototype as any, "fetchOrders")
@@ -389,7 +402,13 @@ describe("LooksRare SDK", () => {
       const { isOrderAsk } = scenario.args;
 
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       it(`should send the correct taker order to relevant smart contract when isOrderAsk is ${isOrderAsk}`, async () => {
@@ -446,7 +465,13 @@ describe("LooksRare SDK", () => {
   describe("getOrders", () => {
     describe("failure", () => {
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       it("should reject if invalid assets are passed in", async () => {
@@ -471,7 +496,13 @@ describe("LooksRare SDK", () => {
 
     describe.each(supportedChainIds)("success", (chainId) => {
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       const apiOrigin = API_ORIGIN[chainId];
@@ -621,7 +652,13 @@ describe("LooksRare SDK", () => {
   describe.each(supportedChainIds)("cancelOrder", (chainId) => {
     describe(`chain ${chainId}`, () => {
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       it("should call exchange contract's cancelMultipleMakerOrders method with order nonces", async () => {
@@ -665,7 +702,13 @@ describe("LooksRare SDK", () => {
         const apiUrl = `${apiOrigin}/api/v1/orders/nonce`;
 
         it(`should make a request to ${apiOrigin} to retrive a nonce`, async () => {
-          looksrare = new LooksRare({ apiKey, address, chainId, signer });
+          looksrare = new LooksRare({
+            apiKey,
+            address,
+            chainId,
+            signer,
+            provider,
+          });
 
           /** @ts-ignore */
           await expect(looksrare.getNonce(address)).resolves.toBe(fetchData);
@@ -693,7 +736,7 @@ describe("LooksRare SDK", () => {
         const apiUrl = `${apiOrigin}/api/v1/orders`;
 
         it(`should serialize payload and post to ${apiOrigin} without api key if it is missing and return the results`, async () => {
-          looksrare = new LooksRare({ address, chainId, signer });
+          looksrare = new LooksRare({ address, chainId, signer, provider });
 
           /** @ts-ignore */
           await expect(looksrare.postOrder(mockPayload)).resolves.toBe(
@@ -710,7 +753,13 @@ describe("LooksRare SDK", () => {
         });
 
         it(`should serialize payload and post to ${apiOrigin} with api key header and return the results`, async () => {
-          looksrare = new LooksRare({ apiKey, address, chainId, signer });
+          looksrare = new LooksRare({
+            apiKey,
+            address,
+            chainId,
+            signer,
+            provider,
+          });
 
           /** @ts-ignore */
           await expect(looksrare.postOrder(mockPayload)).resolves.toBe(
@@ -731,7 +780,13 @@ describe("LooksRare SDK", () => {
 
     describe("parseApiResponse", () => {
       beforeEach(() => {
-        looksrare = new LooksRare({ apiKey, address, chainId, signer });
+        looksrare = new LooksRare({
+          apiKey,
+          address,
+          chainId,
+          signer,
+          provider,
+        });
       });
 
       it("should return error message if response is unsuccessful", async () => {

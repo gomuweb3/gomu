@@ -160,7 +160,7 @@ export interface ContractReceipt {
 const API_ORIGIN: Record<SupportedChainId, string> = {
   [SupportedChainId.HARDHAT]: "http://localhost",
   [SupportedChainId.MAINNET]: "https://api.looksrare.org",
-  [SupportedChainId.RINKEBY]: "https://api-rinkeby.looksrare.org",
+  [SupportedChainId.GOERLI]: "https://goerli.looksrare.org",
 };
 
 enum ApiPath {
@@ -180,7 +180,7 @@ const DEFAULT_PARAMS_HEX = "0x";
 
 export const looksrareSupportedChainIds = [
   SupportedChainId.MAINNET,
-  SupportedChainId.RINKEBY,
+  SupportedChainId.GOERLI,
 ];
 
 export class LooksRare implements Marketplace<LooksRareOrder> {

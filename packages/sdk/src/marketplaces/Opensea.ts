@@ -44,7 +44,7 @@ export interface _OpenseaConfig extends OpenseaConfig {
   signer: Signer;
 }
 
-export const openseaSupportedChainIds = [1, 4];
+export const openseaSupportedChainIds = [1, 5];
 
 // From: https://github.com/ProjectOpenSea/seaport-js/blob/556401030b1d4c72f3d836b5a3c587255ade9f4c/src/constants.ts#L47-L54
 // These are item type values returned by their API and present in all existing v2 orders and are
@@ -271,8 +271,8 @@ export class Opensea implements Marketplace<OpenseaOrder> {
     switch (chainId) {
       case 1:
         return Network.Main;
-      case 4:
-        return Network.Rinkeby;
+      case 5:
+        return Network.Goerli;
       default:
         throw new Error(`unsupported chain id: ${chainId}`);
     }
