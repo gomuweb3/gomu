@@ -1,6 +1,6 @@
+import { BigNumber } from "@0x/utils";
 import { Signer } from "@ethersproject/abstract-signer";
 import { ExternalProvider, Web3Provider } from "@ethersproject/providers";
-import BigNumber from "bignumber.js";
 import { Network, OpenSeaPort, WyvernProtocol } from "opensea-js";
 import {
   CONDUIT_KEYS_TO_CONDUIT,
